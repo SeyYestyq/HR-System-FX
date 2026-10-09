@@ -1,0 +1,140 @@
+.root {
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: #f4f6fb;
+    -fx-text-fill: #172033;
+}
+
+.header {
+    -fx-background-color: #111a2d;
+}
+.header .label {
+    -fx-text-fill: white;
+}
+.header-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+.brand-mark {
+    -fx-background-color: linear-gradient(to bottom right, #335dff, #7a4cff);
+    -fx-text-fill: white !important;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 14;
+    -fx-background-radius: 8;
+}
+.header-status {
+    -fx-font-size: 12px;
+    -fx-text-fill: #5fe187 !important;
+}
+
+.toolbar-panel {
+    -fx-background-color: white;
+    -fx-border-color: transparent transparent #e2e7f0 transparent;
+}
+
+.primary-button {
+    -fx-background-color: #335dff;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-padding: 8 16;
+}
+.primary-button:hover {
+    -fx-background-color: #2649d8;
+}
+
+.secondary-button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #172033;
+    -fx-border-color: #dce2ed;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-padding: 8 14;
+}
+.secondary-button:hover {
+    -fx-background-color: #f8faff;
+    -fx-border-color: #335dff;
+}
+
+.danger-button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #c73545;
+    -fx-border-color: #efbcc3;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-padding: 8 14;
+}
+.danger-button:hover {
+    -fx-background-color: #fff5f5;
+    -fx-border-color: #c73545;
+}
+
+.link-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #687086;
+    -fx-cursor: hand;
+}
+.link-button:hover {
+    -fx-text-fill: #172033;
+}
+
+.text-field, .combo-box {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #dce2ed;
+    -fx-background-color: white;
+    -fx-padding: 6 10;
+}
+.text-field:focused, .combo-box:focused {
+    -fx-border-color: #335dff;
+}
+
+.table-view {
+    -fx-background-color: white;
+    -fx-border-color: #e2e7f0;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+}
+.table-view .column-header-background {
+    -fx-background-color: #f8faff;
+}
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #e2e7f0 transparent;
+    -fx-font-weight: bold;
+}
+.table-row-cell:archived {
+    -fx-opacity: 0.60;
+}
+
+.status-bar {
+    -fx-background-color: white;
+    -fx-border-color: #e2e7f0 transparent transparent transparent;
+}
+.muted {
+    -fx-text-fill: #687086;
+}
+
+/* Карточки аналитики (StatisticsDialog) */
+.metric-card {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #e2e7f0;
+    -fx-border-radius: 12;
+    -fx-padding: 15 20 15 20;
+    -fx-pref-width: 170;
+    -fx-min-width: 170;
+}
+.metric-value {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #335dff;
+}
+.metric-title {
+    -fx-font-size: 12px;
+    -fx-text-fill: #687086;
+}
