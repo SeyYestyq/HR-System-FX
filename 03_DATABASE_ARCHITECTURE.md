@@ -76,13 +76,37 @@ CREATE INDEX IF NOT EXISTS idx_vacancies_title ON vacancies(title);
 
 ### 2.1. Миграция из КР №1
 
-Схема КР №1 служит основой, но не покрывает требования КР №2: в ней отсутствуют `users.full_name`, `users.company_name` и `vacancies.description`. Для приведения существующей базы КР №1 к актуальной схеме используется идемпотентный скрипт `javafx-client/migration_v2.sql`. Он добавляет недостающие колонки (`ADD COLUMN IF NOT EXISTS`) и выполняет бэкфилл данных: `users.full_name` заполняется из локальной части `email`, а `users.company_name` — из `vacancies.company_name` для соответствующих работодателей. Скрипт можно запускать повторно.
+Схема КР №1 служит основой, но не покрывает требования КР №2: в ней отсутствуют `users.full_name`, `users.company_name` и `vacancies.description`. Для приведения существующей базы КР №1 к актуальной схеме используется идемпотентный скрипт `javafx-client/migration_v2.sql`.
 
-Запуск против поднятой БД КР №1 (контейнер `hr-system-postgres`):
+Скрипт выполняет четыре шага:
+
+| # | Шаг | Команда / логика |
+|---|---|---|
+| 1 | Добавляет недостающие колонки | `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` для `users.full_name`, `users.company_name`, `vacancies.description` |
+| 2 | Бэкфилл `users.full_name` | `split_part(email, '@', 1)` — локальная часть email, для строк с пустым значением |
+| 3 | Бэкфилл `users.company_name` | Только если колонка `vacancies.company_name` реально есть в базе (проверка `information_schema.columns` внутри `DO $$ ... $$`) |
+| 4 | Приводит `users.full_name` к `NOT NULL` | Чтобы мигрированная схема совпадала с канонической схемой из `init.sql` |
+
+**Почему шаг 3 условный.** Колонка `vacancies.company_name` есть не в каждой базе КР №1: в канонической схеме `init.sql` её нет вовсе. Без проверки скрипт падал бы с `ERROR: column "company_name" does not exist`. Сейчас при её отсутствии шаг пропускается, а `users.company_name` остаётся `NULL` — DAO читает его через `rs.getString()`, а UI показывает вместо пустоты `toString()` работодателя.
+
+**Идемпотентность.** Скрипт можно запускать повторно: повторные `ALTER TABLE` дают `NOTICE ... already exists, skipping`, а `UPDATE` — `UPDATE 0`. Ошибок при этом нет.
+
+Запуск против поднятой БД (имя контейнера задано в `docker-compose.yml` — `hr_system_postgres`):
 
 ```bash
-docker exec -i hr-system-postgres psql -U hr_user -d hr_system_db < migration_v2.sql
+docker exec -i hr_system_postgres psql -U hr_user -d hr_system_db < migration_v2.sql
 ```
+
+Проверка результата:
+
+```bash
+docker exec -i hr_system_postgres psql -U hr_user -d hr_system_db -c "\d users"       # full_name, company_name
+docker exec -i hr_system_postgres psql -U hr_user -d hr_system_db -c "\d vacancies"   # description
+```
+
+> ⚠️ **Конфликт портов.** Если на машине уже установлен локальный PostgreSQL на порту `5432`, то `localhost:5432` ведёт в него, а не в контейнер, и `testConnection()` вернёт `false` — приложение уйдёт в автономный режим со стабами. Свободный порт задаётся в `.env` переменной `POSTGRES_PORT` (и должен совпадать с портом в `db.url` из `database.properties`).
+
+Автоматических миграций при старте приложения нет: Flyway/Liquibase не используются, скрипт запускается вручную один раз.
 
 ---
 
@@ -114,24 +138,38 @@ INSERT INTO vacancies (title, description, salary_min, salary_max, status, emplo
 
 ## 4. Конфигурация подключения (`database.properties`)
 
-В соответствии с требованиями `2.txt`, параметры подключения к СУБД вынесены из Java-классов в отдельный ресурс `src/main/resources/database.properties`:
+Параметры подключения к СУБД вынесены из Java-классов в отдельный ресурс `src/main/resources/database.properties`:
 
 ```properties
-# Параметры подключения к базе данных КР №2
+# Параметры подключения к PostgreSQL для КР №2
 db.url=jdbc:postgresql://localhost:5432/hr_system_db
 db.user=hr_user
 db.password=hr_password
 db.driver=org.postgresql.Driver
-db.pool.max_total=10
 ```
 
+Единственный источник кредов — этот файл. Те же значения продублированы в `.env` (`POSTGRES_USER` / `POSTGRES_PASSWORD`) и используются в `docker-compose.yml` для инициализации контейнера, поэтому база и приложение всегда ходят под одним пользователем `hr_user`. В Java-коде пароля нет: `grep -rn "postgres" src/main/java` не находит ни захардкоженного пароля, ни фолбэка `postgres/postgres`.
+
+Соединение создаётся **на каждый DAO-вызов** — пул в КР №2 не используется.
+
 Загрузка выполняется через служебный класс `DatabaseManager`:
+
 ```java
 Properties props = new Properties();
 try (InputStream in = DatabaseManager.class.getClassLoader().getResourceAsStream("database.properties")) {
     props.load(in);
 }
 ```
+
+### 4.1. Fail-fast: конфиг обязателен, доступность БД — нет
+
+| Ситуация | Поведение |
+|---|---|
+| `database.properties` отсутствует в classpath | `IllegalStateException` в конструкторе `DatabaseManager` с текстом «database.properties не найден в classpath…» |
+| В файле пустое `db.url`, `db.user` или `db.password` | `IllegalStateException` вида «database.properties не найден или db.password не задан» |
+| Конфиг есть, но БД не поднята / неверный пароль | `testConnection()` возвращает `false`, `HrApplication` подключает `InMemoryVacancyDao` — приложение работает в автономном режиме |
+
+Разделение намеренное: отсутствие конфига — ошибка сборки, которую надо чинить, а не глушить. Недоступность БД — нормальная ситуация, для неё в приложении предусмотрен автономный режим со стабами. Поэтому `testConnection()` не бросает исключений, а `HrApplication` переключает статус в шапке окна на «🟢 PostgreSQL подключен» или «🟠 Автономный режим (Stub)».
 
 ---
 
