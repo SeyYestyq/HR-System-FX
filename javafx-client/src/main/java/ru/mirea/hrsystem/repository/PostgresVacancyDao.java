@@ -1,7 +1,10 @@
 package ru.mirea.hrsystem.repository;
 
 import ru.mirea.hrsystem.model.Vacancy;
+import ru.mirea.hrsystem.util.DatabaseManager;
+
 import java.util.List;
+import java.util.Optional;
 
 /**
  * ============================================================================
@@ -40,10 +43,40 @@ import java.util.List;
  * *\/
  */
 public class PostgresVacancyDao implements VacancyDao {
+    @SuppressWarnings("unused")
+    private final DatabaseManager databaseManager;
+
+    public PostgresVacancyDao(DatabaseManager databaseManager) {
+        this.databaseManager = databaseManager;
+    }
+
     @Override
     public List<Vacancy> findAll() {
-        // TODO: Написать SQL запрос
-        throw new UnsupportedOperationException("Метод не реализован (Задача Максима)");
+        throw notReady();
+    }
+
+    @Override
+    public Optional<Vacancy> findById(Long id) {
+        throw notReady();
+    }
+
+    @Override
+    public Vacancy create(Vacancy vacancy) {
+        throw notReady();
+    }
+
+    @Override
+    public void update(Vacancy vacancy) {
+        throw notReady();
+    }
+
+    @Override
+    public void delete(Long id) {
+        throw notReady();
+    }
+
+    private static UnsupportedOperationException notReady() {
+        return new UnsupportedOperationException("Метод не реализован (Задача Максима)");
     }
 }
 /*

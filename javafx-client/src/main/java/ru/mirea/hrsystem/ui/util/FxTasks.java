@@ -1,48 +1,29 @@
 package ru.mirea.hrsystem.ui.util;
 
+import javafx.concurrent.Task;
+
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+
 /**
- * ============================================================================
- * ПРАКТИКА ПО ТЕМЕ: АСИНХРОННОСТЬ В JAVAFX
- * ИСПОЛНИТЕЛЬ: Глеб (Задача T4)
- * ============================================================================
- * 
- * Тебе нужно создать обертку для выполнения фоновых задач (походов в БД).
- * 
- * ----------------------------------------------------------------------------
- * КАК ДОЛЖНА РАБОТАТЬ ПРОГРАММА:
- * ----------------------------------------------------------------------------
- * 1. Реализовать класс, который внутри себя использует `javafx.concurrent.Task<T>`.
- * 2. Предоставить методы-колбэки `onSuccess(Consumer<T>)` и `onFailure(Consumer<Throwable>)`.
- * 3. Запускать задачу в отдельном потоке (через `Thread` или `ExecutorService`).
- * 
- * Если нужна теория — она в самом конце файла.
- * 
- * ----------------------------------------------------------------------------
- * ШПАРГАЛКА (Код из преподского проекта Student Hub):
- * ----------------------------------------------------------------------------
- * /*
- *     // На основе ru.mirea.studenthub.fx.util.FxTasks
- *     public static <T> void runAsync(Callable<T> callable, Consumer<T> onSuccess) {
- *         Task<T> task = new Task<>() {
- *             @Override protected T call() throws Exception { return callable.call(); }
- *         };
- *         task.setOnSucceeded(e -> onSuccess.accept(task.getValue()));
- *         new Thread(task).start();
- *     }
- * *\/
+ * Фоновая задача: {@code call()} идёт в daemon-потоке,
+ * колбэки успеха и ошибки возвращаются в UI-поток.
  */
-public class FxTasks {
-    // TODO: Реализовать обертку для запуска асинхронных задач
+public final class FxTasks {
+    private FxTasks() {
+    }
+
+    public static <T> void run(Callable<T> work, Consumer<T> onSuccess, Consumer<Throwable> onFailure) {
+        Task<T> task = new Task<>() {
+            @Override
+            protected T call() throws Exception {
+                return work.call();
+            }
+        };
+        task.setOnSucceeded(event -> onSuccess.accept(task.getValue()));
+        task.setOnFailed(event -> onFailure.accept(task.getException()));
+        Thread thread = new Thread(task, "fx-background");
+        thread.setDaemon(true);
+        thread.start();
+    }
 }
-/*
- * ============================================================================
- * ТЕОРИЯ: JavaFX Application Thread
- * ============================================================================
- * В JavaFX (как и во многих UI фреймворках) все визуальные изменения должны 
- * происходить только в ОДНОМ специальном потоке — JavaFX Application Thread.
- * Если ты попытаешься поменять цвет кнопки из другого (фонового) потока, 
- * получишь IllegalStateException. 
- * Класс `Task<T>` разработан специально для этого: метод `call()` выполняется 
- * в фоне, а его события (`setOnSucceeded`) автоматически перебрасываются 
- * обратно в UI-поток.
- */

@@ -1,5 +1,6 @@
 package ru.mirea.hrsystem.ui;
 
+import ru.mirea.hrsystem.model.User;
 import ru.mirea.hrsystem.model.Vacancy;
 import javafx.stage.Window;
 import java.util.List;
@@ -38,7 +39,7 @@ import java.util.List;
  * *\/
  */
 public class VacancyDialog {
-    public static void show(Window owner, Vacancy vacancy, List<Object> employers) {
+    public static void show(Window owner, Vacancy vacancy, List<User> employers) {
         // TODO: Реализовать загрузку FXML и открытие модального окна.
         throw new UnsupportedOperationException("Метод не реализован (Задача Дамира)");
     }

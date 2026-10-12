@@ -1,5 +1,7 @@
 package ru.mirea.hrsystem.util;
 
+import java.sql.Connection;
+
 /**
  * ============================================================================
  * ПРАКТИКА ПО ТЕМЕ: УПРАВЛЕНИЕ ПОДКЛЮЧЕНИЕМ К БД И СВОЙСТВАМИ
@@ -32,7 +34,17 @@ package ru.mirea.hrsystem.util;
  * *\/
  */
 public class DatabaseManager {
-    // TODO: Реализовать чтение конфига и отдачу коннектов
+    /**
+     * Заглушка для сборки UI. Реальное чтение {@code database.properties} делает Эдик.
+     * Пока метод возвращает {@code false}, приложение работает на стабе.
+     */
+    public boolean testConnection() {
+        return false;
+    }
+
+    public Connection getConnection() {
+        throw new UnsupportedOperationException("Подключение к PostgreSQL ещё не реализовано");
+    }
 }
 /*
  * ============================================================================

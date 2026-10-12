@@ -1,53 +1,68 @@
 package ru.mirea.hrsystem.ui;
 
-import ru.mirea.hrsystem.model.StatisticsDto;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import javafx.stage.Window;
+import ru.mirea.hrsystem.model.StatisticsDto;
 
-/**
- * ============================================================================
- * ПРАКТИКА ПО ТЕМЕ: JAVAFX КОМПОНЕНТЫ И LAYOUTS
- * ИСПОЛНИТЕЛЬ: Дамир (Задача T6/T5)
- * ============================================================================
- * 
- * Тебе нужно сверстать диалоговое окно статистики программно (без FXML).
- * 
- * ----------------------------------------------------------------------------
- * КАК ДОЛЖНА РАБОТАТЬ ПРОГРАММА:
- * ----------------------------------------------------------------------------
- * 1. Создать `Stage` (модальное окно).
- * 2. Создать корневой контейнер `GridPane` или `VBox`.
- * 3. Наполнить контейнер элементами `Label` с данными из объекта `StatisticsDto`.
- * 4. Подключить стили из `app.css`.
- * 
- * Если нужна теория — она в самом конце файла.
- * 
- * ----------------------------------------------------------------------------
- * ШПАРГАЛКА (Пример из системы "Интернет-магазин"):
- * ----------------------------------------------------------------------------
- * /*
- *     public static void show(Window owner, OrderStatsDto dto) {
- *         Stage stage = new Stage();
- *         GridPane grid = new GridPane();
- *         Label lbl = new Label("Всего заказов: " + dto.total());
- *         lbl.getStyleClass().add("metric-value");
- *         grid.add(lbl, 0, 0);
- *         stage.setScene(new Scene(grid));
- *         stage.show();
- *     }
- * *\/
- */
-public class StatisticsDialog {
+import java.math.BigDecimal;
+import java.util.Locale;
+
+public final class StatisticsDialog {
+    private StatisticsDialog() {
+    }
+
     public static void show(Window owner, StatisticsDto dto) {
-        // TODO: Реализовать программную верстку окна статистики
-        throw new UnsupportedOperationException("Метод не реализован (Задача Дамира)");
+        Stage stage = new Stage();
+        if (owner != null) {
+            stage.initOwner(owner);
+            stage.initModality(Modality.APPLICATION_MODAL);
+        }
+        stage.setTitle("Статистика");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(12);
+        addCard(grid, 0, 0, "Всего вакансий", Long.toString(dto.totalVacancies()));
+        addCard(grid, 1, 0, "Активных вакансий", Long.toString(dto.activeVacancies()));
+        addCard(grid, 2, 0, "В архиве", Long.toString(dto.archivedVacancies()));
+        addCard(grid, 0, 1, "Средняя зарплата от", money(dto.averageSalaryMin()));
+        addCard(grid, 1, 1, "Максимальная зарплата", money(dto.maxSalary()));
+
+        Button close = new Button("Закрыть");
+        close.getStyleClass().add("secondary-button");
+        close.setOnAction(event -> stage.close());
+
+        VBox root = new VBox(16, grid, close);
+        root.setAlignment(Pos.TOP_CENTER);
+        root.setPadding(new Insets(20));
+        if (owner != null && owner.getScene() != null) {
+            root.getStylesheets().addAll(owner.getScene().getStylesheets());
+        }
+
+        stage.setScene(new Scene(root));
+        stage.showAndWait();
+    }
+
+    private static void addCard(GridPane grid, int column, int row, String title, String value) {
+        Label valueLabel = new Label(value);
+        valueLabel.getStyleClass().add("metric-value");
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("metric-title");
+        VBox card = new VBox(6, valueLabel, titleLabel);
+        card.getStyleClass().add("metric-card");
+        grid.add(card, column, row);
+    }
+
+    private static String money(BigDecimal amount) {
+        long value = amount == null ? 0 : amount.longValue();
+        return String.format(Locale.forLanguageTag("ru-RU"), "%,d ₽", value);
     }
 }
-/*
- * ============================================================================
- * ТЕОРИЯ: JavaFX Layouts
- * ============================================================================
- * Layouts — это контейнеры, управляющие расположением элементов.
- * 1. VBox / HBox — выстраивают элементы в колонку или в строку.
- * 2. GridPane — сетка (как таблица). Элементы добавляются с указанием 
- *    номера колонки и строки: grid.add(node, columnIndex, rowIndex).
- */
