@@ -1,101 +1,85 @@
 package ru.mirea.hrsystem.service;
 
 import ru.mirea.hrsystem.model.Vacancy;
-import java.io.File;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- * ============================================================================
- * ПРАКТИКА ПО ТЕМЕ: ЧИСТАЯ АРХИТЕКТУРА И ЭКСПОРТ ДАННЫХ
- * ИСПОЛНИТЕЛЬ: Дамир (Задача T5)
- * ============================================================================
- * 
- * В этом задании тебе предстоит написать сервис для выгрузки (экспорта) данных о вакансиях
- * в формате CSV. CSV (Comma-Separated Values) — это текстовый формат, который легко 
- * открывается в Excel.
- * 
- * В работе пригодится понимание:
- * - Как работать с потоками вывода в Java (FileOutputStream, PrintWriter).
- * - Что такое BOM (Byte Order Mark) и зачем он нужен для кириллицы.
- * - Почему бизнес-логика (Service) не должна зависеть от графического интерфейса (UI).
- * 
- * Если нужна теория — она в самом конце файла.
- * 
- * ----------------------------------------------------------------------------
- * КАК ДОЛЖНА РАБОТАТЬ ПРОГРАММА:
- * ----------------------------------------------------------------------------
- * 1. Метод `export(List<Vacancy> vacancies, File targetFile)` принимает список вакансий
- *    и уже готовый объект файла (пользователь выбрал его в слое UI).
- * 
- * 2. Метод должен открыть поток для записи в этот файл (`FileOutputStream` + `PrintWriter`) 
- *    в кодировке UTF-8.
- * 
- * 3. Перед записью данных необходимо записать три байта (BOM): 0xEF, 0xBB, 0xBF. 
- *    Без них Excel превратит русские буквы в "кракозябры".
- * 
- * 4. Записать строку с заголовками колонок:
- *    "ID; Название вакансии; Компания; Зарплата от; Зарплата до; Статус; Описание"
- * 
- * 5. В цикле пройтись по списку `vacancies`. Для каждой вакансии сформировать строку, 
- *    разделив значения точкой с запятой (`;`), и записать её в файл.
- * 
- * 6. Ограничения (Архитектура): 
- *    В этом классе категорически запрещено использовать `FileChooser`, `Alert`, 
- *    `Stage` или любые другие классы из пакета `javafx.*`. Если произошла ошибка записи, 
- *    метод должен просто пробросить `Exception` наверх (в UI-слой), где её перехватят 
- *    и покажут Alert.
- * 
- * ----------------------------------------------------------------------------
- * ШПАРГАЛКА (Код из преподского проекта Student Hub):
- * ----------------------------------------------------------------------------
- * /*
- *     // На основе ru.mirea.studenthub.service.CsvStudentService
- *     public void exportStudents(List<Student> students, File targetFile) throws Exception {
- *         try (FileOutputStream fos = new FileOutputStream(targetFile);
- *              OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
- *              PrintWriter writer = new PrintWriter(osw)) {
- *
- *             // BOM для Excel, чтобы кириллица открывалась без кракозябр
- *             fos.write(0xEF); fos.write(0xBB); fos.write(0xBF);
- *             writer.println("ID;Фамилия;Имя;Группа;Средний балл");
- *
- *             for (Student s : students) {
- *                 writer.printf("%d;%s;%s;%s;%s%n",
- *                     s.getId(),
- *                     s.getLastName() != null ? s.getLastName().replace(";", ",") : "",
- *                     s.getFirstName() != null ? s.getFirstName().replace(";", ",") : "",
- *                     s.getGroupCode(),
- *                     s.getAverageGrade()
- *                 );
- *             }
- *         }
- *     }
- * *\/
+ * Сервис выгрузки вакансий в формат CSV (Comma-Separated Values).
+ * <p>
+ * Архитектурные требования:
+ * 1. Полная изоляция от слоя представления: никаких импортов графических библиотек UI.
+ * 2. Запись UTF-8 BOM (0xEF, 0xBB, 0xBF) для корректного распознавания кириллицы в MS Excel.
+ * 3. Экранирование разделителей (';') и переводов строк в текстовых данных.
  */
 public class CsvExportService {
 
-    public void export(List<Vacancy> vacancies, File targetFile) throws Exception {
-        // TODO: Реализуй экспорт вакансий в CSV файл согласно инструкции выше.
-        throw new UnsupportedOperationException("Метод экпорта еще не реализован (Задача Дамира)");
+    private static final String CSV_DELIMITER = ";";
+    private static final String CSV_HEADER = "ID;Название вакансии;Компания;Зарплата от;Зарплата до;Статус;Описание";
+
+    /**
+     * Экспортирует переданный список вакансий в целевой CSV-файл.
+     *
+     * @param vacancies  снимок (snapshot) списка вакансий
+     * @param targetFile целевой файл на диске
+     * @throws IOException при ошибках ввода-вывода
+     */
+    public void export(List<Vacancy> vacancies, File targetFile) throws IOException {
+        if (targetFile == null) {
+            throw new IllegalArgumentException("Целевой файл для экспорта не может быть null");
+        }
+
+        File parentDir = targetFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+        }
+
+        try (FileOutputStream fos = new FileOutputStream(targetFile);
+             OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+             BufferedWriter bw = new BufferedWriter(osw);
+             PrintWriter writer = new PrintWriter(bw)) {
+
+            // Запись UTF-8 Byte Order Mark (BOM)
+            fos.write(0xEF);
+            fos.write(0xBB);
+            fos.write(0xBF);
+
+            writer.println(CSV_HEADER);
+
+            if (vacancies != null) {
+                for (Vacancy v : vacancies) {
+                    writer.println(formatCsvRow(v));
+                }
+            }
+            writer.flush();
+        }
+    }
+
+    private String formatCsvRow(Vacancy v) {
+        if (v == null) {
+            return "";
+        }
+        return String.join(CSV_DELIMITER,
+                String.valueOf(v.getId() != null ? v.getId() : ""),
+                cleanField(v.getTitle()),
+                cleanField(v.getEmployerCompanyName()),
+                v.getSalaryMin() != null ? v.getSalaryMin().toPlainString() : "",
+                v.getSalaryMax() != null ? v.getSalaryMax().toPlainString() : "",
+                v.getStatus() != null ? v.getStatus().name() : "",
+                cleanField(v.getDescription())
+        );
+    }
+
+    private String cleanField(String value) {
+        if (value == null) {
+            return "";
+        }
+        // Заменяем разделители и переносы строк, чтобы не нарушать CSV-структуру
+        return value.replace(";", ",")
+                .replace("\r", " ")
+                .replace("\n", " ")
+                .trim();
     }
 }
-/*
- * ============================================================================
- * ТЕОРИЯ: Потоки вывода, BOM и Чистая Архитектура
- * ============================================================================
- * 1. FileOutputStream и PrintWriter. В Java для записи байтов в файл используется 
- * FileOutputStream. Но так как мы пишем текст, поверх него оборачивается 
- * OutputStreamWriter (для указания кодировки UTF-8) и PrintWriter (чтобы удобно 
- * вызывать методы вроде println() и printf()).
- * 
- * 2. BOM (Byte Order Mark) — это специальная метка из 3 байтов в самом начале файла, 
- * которая подсказывает текстовым редакторам (в первую очередь Microsoft Excel), 
- * что файл сохранен в кодировке UTF-8. Если не записать эти 3 байта (0xEF, 0xBB, 0xBF), 
- * русский текст при открытии в Excel превратится в нечитаемые символы.
- * 
- * 3. Чистая Архитектура (Separation of Concerns). Сервисный слой (Service) отвечает 
- * только за бизнес-логику (расчеты, экспорт данных). Он не должен знать о том, 
- * как программа выглядит визуально. Если в Service добавить JavaFX-классы (окна), 
- * то этот код невозможно будет использовать в Web-версии или Telegram-боте, 
- * так как там нет окон JavaFX.
- */

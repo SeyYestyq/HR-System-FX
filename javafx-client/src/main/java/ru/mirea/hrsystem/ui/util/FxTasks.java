@@ -1,48 +1,63 @@
 package ru.mirea.hrsystem.ui.util;
 
+import javafx.concurrent.Task;
+
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+
 /**
- * ============================================================================
- * ПРАКТИКА ПО ТЕМЕ: АСИНХРОННОСТЬ В JAVAFX
- * ИСПОЛНИТЕЛЬ: Глеб (Задача T4)
- * ============================================================================
- * 
- * Тебе нужно создать обертку для выполнения фоновых задач (походов в БД).
- * 
- * ----------------------------------------------------------------------------
- * КАК ДОЛЖНА РАБОТАТЬ ПРОГРАММА:
- * ----------------------------------------------------------------------------
- * 1. Реализовать класс, который внутри себя использует `javafx.concurrent.Task<T>`.
- * 2. Предоставить методы-колбэки `onSuccess(Consumer<T>)` и `onFailure(Consumer<Throwable>)`.
- * 3. Запускать задачу в отдельном потоке (через `Thread` или `ExecutorService`).
- * 
- * Если нужна теория — она в самом конце файла.
- * 
- * ----------------------------------------------------------------------------
- * ШПАРГАЛКА (Код из преподского проекта Student Hub):
- * ----------------------------------------------------------------------------
- * /*
- *     // На основе ru.mirea.studenthub.fx.util.FxTasks
- *     public static <T> void runAsync(Callable<T> callable, Consumer<T> onSuccess) {
- *         Task<T> task = new Task<>() {
- *             @Override protected T call() throws Exception { return callable.call(); }
- *         };
- *         task.setOnSucceeded(e -> onSuccess.accept(task.getValue()));
- *         new Thread(task).start();
- *     }
- * *\/
+ * Утилита для асинхронного выполнения тяжелых операций (сеть, БД, файловый ввод-вывод)
+ * вне JavaFX Application Thread, обеспечивая отзывчивость интерфейса.
+ * Обратные вызовы (onSuccess, onFailure) гарантированно выполняются на UI-потоке.
  */
-public class FxTasks {
-    // TODO: Реализовать обертку для запуска асинхронных задач
+public final class FxTasks {
+
+    private FxTasks() {}
+
+    /**
+     * Запускает задачу в фоновом daemon-потоке с возвратом результата.
+     *
+     * @param callable  действие в фоновом потоке
+     * @param onSuccess колбэк на UI-потоке при успехе
+     * @param onFailure колбэк на UI-потоке при ошибке
+     * @param <T>       тип возвращаемого значения
+     */
+    public static <T> void run(Callable<T> callable, Consumer<T> onSuccess, Consumer<Throwable> onFailure) {
+        Task<T> task = new Task<>() {
+            @Override
+            protected T call() throws Exception {
+                return callable.call();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            if (onSuccess != null) {
+                onSuccess.accept(task.getValue());
+            }
+        });
+
+        task.setOnFailed(event -> {
+            if (onFailure != null) {
+                onFailure.accept(task.getException());
+            }
+        });
+
+        Thread thread = new Thread(task, "hr-task-thread-" + System.nanoTime());
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    /**
+     * Запускает фоновую процедуру (без возвращаемого значения).
+     */
+    public static void run(Runnable runnable, Runnable onSuccess, Consumer<Throwable> onFailure) {
+        run(() -> {
+            runnable.run();
+            return null;
+        }, ignored -> {
+            if (onSuccess != null) {
+                onSuccess.run();
+            }
+        }, onFailure);
+    }
 }
-/*
- * ============================================================================
- * ТЕОРИЯ: JavaFX Application Thread
- * ============================================================================
- * В JavaFX (как и во многих UI фреймворках) все визуальные изменения должны 
- * происходить только в ОДНОМ специальном потоке — JavaFX Application Thread.
- * Если ты попытаешься поменять цвет кнопки из другого (фонового) потока, 
- * получишь IllegalStateException. 
- * Класс `Task<T>` разработан специально для этого: метод `call()` выполняется 
- * в фоне, а его события (`setOnSucceeded`) автоматически перебрасываются 
- * обратно в UI-поток.
- */
