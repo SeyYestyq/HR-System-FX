@@ -138,3 +138,13 @@
     -fx-font-size: 12px;
     -fx-text-fill: #687086;
 }
+
+.field-error {
+    -fx-border-color: #c73545;
+}
+
+.error-text {
+    -fx-text-fill: #c73545;
+    -fx-font-weight: bold;
+    -fx-padding: 0 10 0 10;
+}

@@ -279,14 +279,34 @@ public class MainController {
             setBusy(false);
             employers = list;
             try {
-                VacancyDialog.show(window(), vacancy, employers);
-                loadData();
+                Vacancy saved = VacancyDialog.show(window(), vacancy, employers);
+                if (saved != null) {
+                    saveVacancy(saved);
+                }
             } catch (Exception ex) {
                 showError("Диалог вакансии", ex);
             }
         }, error -> {
             setBusy(false);
             showError("Ошибка загрузки", error);
+        });
+    }
+
+    private void saveVacancy(Vacancy vacancy) {
+        setBusy(true);
+        FxTasks.run(() -> {
+            if (vacancy.getId() == null) {
+                vacancyService.createVacancy(vacancy);
+            } else {
+                vacancyService.updateVacancy(vacancy);
+            }
+            return null;
+        }, unused -> {
+            setBusy(false);
+            loadData();
+        }, error -> {
+            setBusy(false);
+            showError("Ошибка сохранения", error);
         });
     }
 

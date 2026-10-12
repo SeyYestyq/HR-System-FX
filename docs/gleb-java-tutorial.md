@@ -783,18 +783,14 @@ private void showError(String title, Throwable error) {
 
 `log.error` пишет в SLF4J, не в `System.out.println`. В логе остаётся стек. Пользователь видит короткое окно, не консоль.
 
-Диалог вакансии пока бросает исключение специально. Его ловят рядом с вызовом, потому что `show` выполняется уже на потоке окна, не внутри `call()`:
+Диалог вакансии выполняется на потоке окна: `showAndWait` нельзя звать из фона. Если форма не загрузилась, исключение ловят рядом и показывают окно ошибки. Если человек нажал «Отмена», метод возвращает `null` и таблица не трогается. Если вернул вакансию, сохранение уходит в новый `FxTasks.run`.
 
 ```java
-try {
-    VacancyDialog.show(window(), vacancy, employers);
-    loadData();
-} catch (Exception ex) {
-    showError("Диалог вакансии", ex);
+Vacancy saved = VacancyDialog.show(window(), vacancy, employers);
+if (saved != null) {
+    saveVacancy(saved);
 }
 ```
-
-`loadData()` стоит после `show`. Если метод бросил, перезагрузки нет. Когда Дамир научит диалог возвращаться спокойно, перезагрузка выполнится.
 
 Общий пример. Деление, которое не роняет весь расчёт:
 
@@ -983,3 +979,147 @@ static boolean matches(Book book, String query, String years) {
 | `try/catch`, `UiUtils`, `log.error` | 20 |
 | `initDependencies`, `UserDao` | 21 |
 | `stream().filter`, `assertThat` | 22 |
+| `Properties`, `getResourceAsStream` | 25 |
+| `PreparedStatement`, `?` | 26 |
+| BOM, кавычки CSV | 27 |
+| `EventFilter`, `field-error` | 28 |
+
+## 25. Файл настроек и два исхода подключения
+
+Пароль не пишут в Java. Его читают из `database.properties` через загрузчик классов, потому что внутри JAR обычный `new File("database.properties")` файл не найдёт.
+
+```java
+try (InputStream input = DatabaseManager.class.getClassLoader()
+        .getResourceAsStream("database.properties")) {
+    if (input == null) {
+        throw new DatabaseException("Файл database.properties не найден");
+    }
+    Properties properties = new Properties();
+    properties.load(input);
+}
+```
+
+`try-with-resources` закрывает поток сам, даже если дальше было исключение.
+
+Дальше два разных провала, и их нельзя смешивать:
+
+```mermaid
+flowchart TD
+    file{Файл настроек есть?}
+    stop[Исключение, программа не стартует]
+    ping{Сервер ответил?}
+    real[PostgreSQL]
+    stub[Стаб в памяти]
+    file -->|нет| stop
+    file -->|да| ping
+    ping -->|да| real
+    ping -->|нет| stub
+```
+
+Общий пример. Та же развилка для любого внешнего сервиса: нет адреса — это ошибка сборки, адрес есть, но сервер спит — работаем на запасных данных.
+
+Соединение отдают вызывающему, а не хранят одно на всё приложение. Каждый метод DAO открывает своё и закрывает в `try-with-resources`.
+
+## 26. PreparedStatement
+
+SQL с подставленной строкой опасен: кусок названия может стать командой. Знак `?` — дырка, значение кладётся отдельно.
+
+```java
+String sql = "DELETE FROM vacancies WHERE id = ?";
+try (Connection connection = databaseManager.getConnection();
+     PreparedStatement statement = connection.prepareStatement(sql)) {
+    statement.setLong(1, id);
+    statement.executeUpdate();
+}
+```
+
+Номера дырок начинаются с 1, не с 0. `executeQuery` — когда ждём строки. `executeUpdate` — когда меняем данные. `RETURN_GENERATED_KEYS` нужен, чтобы после `INSERT` забрать новый `id`.
+
+Пустую зарплату нельзя передать как строку `"null"`. Для неё есть `setNull(index, Types.NUMERIC)`.
+
+Общий пример. Поиск человека по почте:
+
+```java
+PreparedStatement statement = connection.prepareStatement(
+        "SELECT id FROM users WHERE email = ?");
+statement.setString(1, email);
+```
+
+Даже если почта содержит `'; DROP TABLE users;--`, база видит одну строку-значение, не команду.
+
+Чтение строки в объект — метод `map`. Колонка `company_name` приходит из `LEFT JOIN`: вакансия без компании всё равно попадёт в список, имя компании будет `null`, экран покажет `ID #...`.
+
+## 27. CSV, кавычки и BOM
+
+Excel на Windows часто не понимает UTF-8 без метки в начале файла. Три байта `EF BB BF` — эта метка. В Java-строке она выглядит как `\uFEFF`.
+
+Поля разделены `;`, не запятой: в русских Excel запятая уже занята дробью.
+
+Если в названии есть сама точка с запятой, строку нельзя просто склеить. Поле берут в кавычки:
+
+```java
+static String cell(String value) {
+    if (value == null) {
+        return "";
+    }
+    boolean quote = value.contains(";") || value.contains("\"")
+            || value.contains("\n") || value.contains("\r");
+    String escaped = value.replace("\"", "\"\"");
+    return quote ? "\"" + escaped + "\"" : escaped;
+}
+```
+
+`Java; Backend` становится `"Java; Backend"`. Кавычка внутри поля удваивается: `сказал "да"` становится `"сказал ""да"""`.
+
+Общий пример. Та же функция годится для любого отчёта, не только вакансий. Главное — не тащить в сервис `FileChooser`. Путь выбирает окно, сервис только пишет байты.
+
+## 28. Форма: фильтр события и красное поле
+
+Кнопка «Сохранить» не должна закрывать окно, пока данные кривые. `EventFilter` срабатывает раньше обычного обработчика. `event.consume()` останавливает событие.
+
+```java
+saveButton.addEventFilter(ActionEvent.ACTION, event -> {
+    if (!validate()) {
+        event.consume();
+        return;
+    }
+    result = buildVacancy();
+    close();
+});
+```
+
+Красная рамка — класс, не `setStyle`:
+
+```java
+node.getStyleClass().remove("field-error");
+if (invalid) {
+    node.getStyleClass().add("field-error");
+}
+```
+
+```css
+.field-error {
+    -fx-border-color: #c73545;
+}
+```
+
+Форма не пишет в базу. Она возвращает `Vacancy` или `null`. Сохранение делает контроллер главного окна через `VacancyService`, уже в фоне. Так форма остаётся проверяльщиком полей, а правила «название от 3 до 100» ещё раз проверяет сервис.
+
+Общий пример. Любая модальная форма по этой схеме:
+
+1. Показать окно и подождать `showAndWait`.
+2. При отмене вернуть `null`.
+3. При успехе вернуть готовый объект, не соединение с базой.
+4. Вызвавший код сам решает, создать запись или обновить.
+
+## 29. Что проверяют тесты после сборки веток
+
+| Тест | Что доказывает |
+|---|---|
+| `VacancyFilterTest` | «до 100 000», «от 200 000», слово Spring, все 8 строк |
+| `StatisticsServiceTest` | 8 / 6 / 1 / 175625 / 480000 и нули на пустом списке |
+| `CsvExportServiceTest` | кавычки вокруг `;` и заголовок с BOM |
+| `VacancyServiceTest` | создание, проверка полей, архив |
+
+Окно при `mvn test` не открывается. Его смотрят отдельно: `mvn javafx:run`. Без базы в логе будет предупреждение PostgreSQL и фраза про автономный режим, затем «главное окно отображено».
+

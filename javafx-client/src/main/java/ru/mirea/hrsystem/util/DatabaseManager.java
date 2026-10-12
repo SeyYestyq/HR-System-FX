@@ -1,57 +1,68 @@
 package ru.mirea.hrsystem.util;
 
-import java.sql.Connection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.mirea.hrsystem.exception.DatabaseException;
 
-/**
- * ============================================================================
- * ПРАКТИКА ПО ТЕМЕ: УПРАВЛЕНИЕ ПОДКЛЮЧЕНИЕМ К БД И СВОЙСТВАМИ
- * ИСПОЛНИТЕЛЬ: Эдик (Задача T2)
- * ============================================================================
- * 
- * Тебе нужно скрыть хардкод паролей и логинов от базы данных.
- * 
- * ----------------------------------------------------------------------------
- * КАК ДОЛЖНА РАБОТАТЬ ПРОГРАММА:
- * ----------------------------------------------------------------------------
- * 1. Прочитать файл `database.properties` через `ClassLoader.getResourceAsStream`.
- * 2. Инициализировать подключение к БД (`DriverManager.getConnection`) используя
- *    прочитанные данные.
- * 3. Если базы нет или пароль неверный — выбросить понятное исключение (fail-fast).
- * 
- * Если нужна теория — она в самом конце файла.
- * 
- * ----------------------------------------------------------------------------
- * ШПАРГАЛКА (Код из преподского проекта Student Hub):
- * ----------------------------------------------------------------------------
- * /*
- *     // В student-hub-suite-rebuilt конфигурация БД спрятана в application.yml (Spring).
- *     // Но в рамках чистого JDBC это делается так:
- *     Properties props = new Properties();
- *     try (InputStream in = DatabaseManager.class.getClassLoader().getResourceAsStream("database.properties")) {
- *         props.load(in);
- *     }
- *     Connection conn = DriverManager.getConnection(props.getProperty("url"), props);
- * *\/
- */
+import java.io.IOException;
+import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.Properties;
+
 public class DatabaseManager {
-    /**
-     * Заглушка для сборки UI. Реальное чтение {@code database.properties} делает Эдик.
-     * Пока метод возвращает {@code false}, приложение работает на стабе.
-     */
+    private static final Logger log = LoggerFactory.getLogger(DatabaseManager.class);
+
     public boolean testConnection() {
-        return false;
+        try (Connection connection = getConnection()) {
+            return connection.isValid(2);
+        } catch (DatabaseException exception) {
+            if (exception.getCause() instanceof SQLException) {
+                log.warn("PostgreSQL недоступен: {}", exception.getMessage());
+                return false;
+            }
+            throw exception;
+        } catch (SQLException exception) {
+            log.warn("PostgreSQL недоступен", exception);
+            return false;
+        }
     }
 
     public Connection getConnection() {
-        throw new UnsupportedOperationException("Подключение к PostgreSQL ещё не реализовано");
+        Properties file = loadProperties();
+        String url = required(file, "db.url");
+        String user = required(file, "db.user");
+        String password = required(file, "db.password");
+        String driver = file.getProperty("db.driver", "org.postgresql.Driver");
+        try {
+            Class.forName(driver);
+            return DriverManager.getConnection(url, user, password);
+        } catch (ClassNotFoundException exception) {
+            throw new DatabaseException("Драйвер PostgreSQL не найден: " + driver, exception);
+        } catch (SQLException exception) {
+            throw new DatabaseException("Не удалось подключиться к PostgreSQL", exception);
+        }
+    }
+
+    private Properties loadProperties() {
+        try (InputStream input = DatabaseManager.class.getClassLoader().getResourceAsStream("database.properties")) {
+            if (input == null) {
+                throw new DatabaseException("Файл database.properties не найден. Приложение не может стартовать.");
+            }
+            Properties properties = new Properties();
+            properties.load(input);
+            return properties;
+        } catch (IOException exception) {
+            throw new DatabaseException("Не удалось прочитать database.properties", exception);
+        }
+    }
+
+    private static String required(Properties properties, String key) {
+        String value = properties.getProperty(key);
+        if (value == null || value.isBlank()) {
+            throw new DatabaseException("В database.properties нет значения " + key);
+        }
+        return value.trim();
     }
 }
-/*
- * ============================================================================
- * ТЕОРИЯ: ClassLoader и Properties
- * ============================================================================
- * 1. В скомпилированном проекте ресурсы (файлы .properties, .xml, .css) 
- * запаковываются внутрь JAR-файла. Читать их через `new File("...")` нельзя.
- * Правильный способ: `getClassLoader().getResourceAsStream("имя_файла")`.
- * 2. java.util.Properties — удобный класс для чтения настроек в формате `ключ=значение`.
- */

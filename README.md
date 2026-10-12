@@ -16,7 +16,7 @@
 | [04_TEAM_WORK_PLAN.md](04_TEAM_WORK_PLAN.md) | 7-дневный спринт, микро-дедлайны, DoD дней | Дамир |
 | [PROJECT_RULES.md](PROJECT_RULES.md) | Стандарты кода, Clean Architecture, потокобезопасность UI | Дамир |
 | [docs/gleb-ui.md](docs/gleb-ui.md) | Как устроен интерфейс Глеба: окно, фильтры, фон, статистика, экспорт | Глеб |
-| [docs/gleb-integration.md](docs/gleb-integration.md) | Куда подключать сервисы, DAO и диалоги, чтобы кнопки ожили | Глеб |
+| [docs/gleb-integration.md](docs/gleb-integration.md) | Куда подключены база, SQL, статистика, CSV и форма | Глеб |
 | [docs/gleb-java-tutorial.md](docs/gleb-java-tutorial.md) | Обучалка по Java и JavaFX на коде этого интерфейса | Глеб |
 
 Персональные ТЗ (задачи T1–T10 в формате «лёгкого ТЗ»):

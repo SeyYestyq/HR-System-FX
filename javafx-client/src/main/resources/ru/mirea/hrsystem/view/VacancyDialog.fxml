@@ -33,6 +33,11 @@
                   GridPane.columnIndex="1" GridPane.rowIndex="5"/>
     </GridPane>
 
-    <Label fx:id="errorLabel" wrapText="true"
-           style="-fx-text-fill: #c73545; -fx-font-weight: bold;"/>
+    <Label fx:id="errorLabel" wrapText="true" styleClass="error-text"/>
+
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <padding><Insets top="0" right="10" bottom="10" left="10"/></padding>
+        <Button fx:id="cancelButton" text="Отмена" styleClass="secondary-button"/>
+        <Button fx:id="saveButton" text="Сохранить" styleClass="primary-button"/>
+    </HBox>
 </VBox>

@@ -1,49 +1,31 @@
 package ru.mirea.hrsystem.repository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.mirea.hrsystem.exception.DatabaseException;
 import ru.mirea.hrsystem.model.Vacancy;
+import ru.mirea.hrsystem.model.VacancyStatus;
 import ru.mirea.hrsystem.util.DatabaseManager;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * ============================================================================
- * ПРАКТИКА ПО ТЕМЕ: ДОСТУП К ДАННЫМ (JDBC)
- * ИСПОЛНИТЕЛЬ: Максим (Задача T9)
- * ============================================================================
- * 
- * Реализовать сохранение и получение вакансий из PostgreSQL.
- * 
- * В работе пригодится понимание:
- * - JDBC, PreparedStatement, ResultSet.
- * - SQL запросы SELECT, INSERT, UPDATE.
- * 
- * Если нужна теория — она в самом конце файла.
- * 
- * ----------------------------------------------------------------------------
- * ШПАРГАЛКА (Код из преподского проекта Student Hub):
- * ----------------------------------------------------------------------------
- * /*
- *     // На основе прямого JDBC, который вы используете в архитектуре КР2
- *     public List<Student> findAll() {
- *         List<Student> list = new ArrayList<>();
- *         try (Connection c = DatabaseManager.openConnection();
- *              PreparedStatement ps = c.prepareStatement("SELECT * FROM students");
- *              ResultSet rs = ps.executeQuery()) {
- *             while (rs.next()) {
- *                 list.add(new Student(
- *                     rs.getLong("id"), 
- *                     rs.getString("first_name"), 
- *                     rs.getString("last_name")
- *                 ));
- *             }
- *         } catch (SQLException e) { ... }
- *         return list;
- *     }
- * *\/
- */
 public class PostgresVacancyDao implements VacancyDao {
-    @SuppressWarnings("unused")
+    private static final Logger log = LoggerFactory.getLogger(PostgresVacancyDao.class);
+    private static final String SELECT_SQL = """
+            SELECT v.id, v.title, v.description, v.salary_min, v.salary_max, v.status,
+                   v.employer_id, u.company_name, v.created_at, v.updated_at
+            FROM vacancies v
+            LEFT JOIN users u ON u.id = v.employer_id
+            """;
+
     private final DatabaseManager databaseManager;
 
     public PostgresVacancyDao(DatabaseManager databaseManager) {
@@ -52,48 +34,125 @@ public class PostgresVacancyDao implements VacancyDao {
 
     @Override
     public List<Vacancy> findAll() {
-        throw notReady();
+        String sql = SELECT_SQL + " ORDER BY v.id";
+        List<Vacancy> vacancies = new ArrayList<>();
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet rows = statement.executeQuery()) {
+            while (rows.next()) {
+                vacancies.add(map(rows));
+            }
+            return vacancies;
+        } catch (SQLException exception) {
+            log.error("Не удалось прочитать вакансии", exception);
+            throw new DatabaseException("Не удалось прочитать вакансии", exception);
+        }
     }
 
     @Override
     public Optional<Vacancy> findById(Long id) {
-        throw notReady();
+        String sql = SELECT_SQL + " WHERE v.id = ?";
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, id);
+            try (ResultSet rows = statement.executeQuery()) {
+                if (rows.next()) {
+                    return Optional.of(map(rows));
+                }
+                return Optional.empty();
+            }
+        } catch (SQLException exception) {
+            throw new DatabaseException("Не удалось прочитать вакансию", exception);
+        }
     }
 
     @Override
     public Vacancy create(Vacancy vacancy) {
-        throw notReady();
+        String sql = """
+                INSERT INTO vacancies (title, description, salary_min, salary_max, status, employer_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """;
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            bind(statement, vacancy);
+            statement.executeUpdate();
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                if (keys.next()) {
+                    vacancy.setId(keys.getLong(1));
+                }
+            }
+            return vacancy;
+        } catch (SQLException exception) {
+            log.error("Не удалось создать вакансию", exception);
+            throw new DatabaseException("Не удалось создать вакансию", exception);
+        }
     }
 
     @Override
     public void update(Vacancy vacancy) {
-        throw notReady();
+        String sql = """
+                UPDATE vacancies
+                SET title = ?, description = ?, salary_min = ?, salary_max = ?, status = ?,
+                    employer_id = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """;
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            bind(statement, vacancy);
+            statement.setLong(7, vacancy.getId());
+            statement.executeUpdate();
+        } catch (SQLException exception) {
+            log.error("Не удалось обновить вакансию {}", vacancy.getId(), exception);
+            throw new DatabaseException("Не удалось обновить вакансию", exception);
+        }
     }
 
     @Override
     public void delete(Long id) {
-        throw notReady();
+        String sql = "DELETE FROM vacancies WHERE id = ?";
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, id);
+            statement.executeUpdate();
+        } catch (SQLException exception) {
+            log.error("Не удалось удалить вакансию {}", id, exception);
+            throw new DatabaseException("Не удалось удалить вакансию", exception);
+        }
     }
 
-    private static UnsupportedOperationException notReady() {
-        return new UnsupportedOperationException("Метод не реализован (Задача Максима)");
+    private static void bind(PreparedStatement statement, Vacancy vacancy) throws SQLException {
+        statement.setString(1, vacancy.getTitle());
+        statement.setString(2, vacancy.getDescription());
+        setMoney(statement, 3, vacancy.getSalaryMin());
+        setMoney(statement, 4, vacancy.getSalaryMax());
+        statement.setString(5, vacancy.getStatus() == null ? VacancyStatus.ACTIVE.name() : vacancy.getStatus().name());
+        statement.setLong(6, vacancy.getEmployerId());
+    }
+
+    private static void setMoney(PreparedStatement statement, int index, java.math.BigDecimal value) throws SQLException {
+        if (value == null) {
+            statement.setNull(index, Types.NUMERIC);
+        } else {
+            statement.setBigDecimal(index, value);
+        }
+    }
+
+    private static Vacancy map(ResultSet rows) throws SQLException {
+        Vacancy vacancy = new Vacancy(
+                rows.getLong("id"),
+                rows.getString("title"),
+                rows.getString("description"),
+                rows.getBigDecimal("salary_min"),
+                rows.getBigDecimal("salary_max"),
+                VacancyStatus.valueOf(rows.getString("status")),
+                rows.getLong("employer_id"));
+        vacancy.setEmployerCompanyName(rows.getString("company_name"));
+        if (rows.getTimestamp("created_at") != null) {
+            vacancy.setCreatedAt(rows.getTimestamp("created_at").toLocalDateTime());
+        }
+        if (rows.getTimestamp("updated_at") != null) {
+            vacancy.setUpdatedAt(rows.getTimestamp("updated_at").toLocalDateTime());
+        }
+        return vacancy;
     }
 }
-/*
- * ============================================================================
- * ТЕОРИЯ: JDBC и PreparedStatement
- * ============================================================================
- * 1. JDBC — низкоуровневый API в Java для работы с реляционными БД. Он дает полный 
- * контроль над SQL, но ответственность за закрытие ресурсов и обработку ошибок остается 
- * на разработчике (поэтому используем try-with-resources).
- * 
- * 2. PreparedStatement — это подготовленный SQL-запрос. В отличие от обычного Statement,
- * данные в него передаются через параметры (знак ?). Это критически важно, так как:
- * - данные не интерпретируются как часть SQL;
- * - снижается риск SQL-инъекций;
- * - корректно передаются даты, числа и null;
- * - план запроса в базе данных может переиспользоваться.
- * 
- * 3. ResultSet — это объект, хранящий результат SQL-запроса (строки из таблицы). 
- * Метод rs.next() сдвигает курсор на следующую строку.
- */
