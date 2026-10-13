@@ -240,7 +240,39 @@ public class MainController {
         updateCountLabel();
     }
 
-    private boolean matchesSalaryRange(Vacancy vacancy, String salaryRange) {
+    /**
+     * Проверяет, соответствует ли вакансия критериям фильтрации.
+     * Package-private static для тестируемости (используется в VacancyFilterTest).
+     */
+    static boolean matches(Vacancy vacancy, String query, String status, String salaryRange) {
+        if (vacancy == null) {
+            return false;
+        }
+
+        // 1. Поиск по подстроке
+        if (query != null && !query.isEmpty()) {
+            String q = query.toLowerCase();
+            String title = vacancy.getTitle() != null ? vacancy.getTitle().toLowerCase() : "";
+            String company = vacancy.getEmployerCompanyName() != null ? vacancy.getEmployerCompanyName().toLowerCase() : "";
+            String desc = vacancy.getDescription() != null ? vacancy.getDescription().toLowerCase() : "";
+
+            if (!title.contains(q) && !company.contains(q) && !desc.contains(q)) {
+                return false;
+            }
+        }
+
+        // 2. Фильтр по статусу
+        if (status != null && !status.equals("Все статусы")) {
+            if (vacancy.getStatus() == null || !vacancy.getStatus().name().equalsIgnoreCase(status)) {
+                return false;
+            }
+        }
+
+        // 3. Фильтр по зарплатному диапазону
+        return matchesSalaryRange(vacancy, salaryRange);
+    }
+
+    private static boolean matchesSalaryRange(Vacancy vacancy, String salaryRange) {
         if (salaryRange == null || salaryRange.equals("Вся зарплата")) {
             return true;
         }
