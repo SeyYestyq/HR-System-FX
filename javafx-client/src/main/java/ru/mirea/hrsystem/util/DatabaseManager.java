@@ -11,25 +11,17 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 /**
- * ============================================================================
- * ПРАКТИКА ПО ТЕМЕ: УПРАВЛЕНИЕ ПОДКЛЮЧЕНИЕМ К БД И СВОЙСТВАМИ
- * ИСПОЛНИТЕЛЬ: Эдик (Задача T2)
- * ============================================================================
- *
- * ----------------------------------------------------------------------------
- * КАК РАБОТАЕТ ПРОГРАММА:
- * ----------------------------------------------------------------------------
- * 1. Прочитать файл `database.properties` через `ClassLoader.getResourceAsStream`.
- * 2. Инициализировать подключение к БД (`DriverManager.getConnection`) используя
- *    прочитанные данные.
- * 3. Если базы нет или пароль неверный — выбросить понятное исключение (fail-fast).
- *
- * Разделение ответственности:
+ * Менеджер подключения к базе данных PostgreSQL.
+ * <p>
+ * Загружает параметры подключения из {@code resources/database.properties}
+ * и обеспечивает fail-fast валидацию конфигурации.
+ * <p>
+ * Контракт:
  * - Конструктор — fail-fast: падает сразу, если конфига нет или в нём не хватает
- *   обязательных ключей. Молчаливый `null` недопустим.
- * - `getConnection()` — соединение для DAO. Проброс SQLException наружу, чтобы DAO
- *   мог превратить его в `DatabaseException` в своём `catch`.
- * - `testConnection()` — мягкая проверка для выбора режима работы приложения:
+ *   обязательных ключей. Молчаливый {@code null} недопустим.
+ * - {@link #getConnection()} — соединение для DAO. Проброс SQLException наружу, чтобы DAO
+ *   мог превратить его в {@code DatabaseException} в своём {@code catch}.
+ * - {@link #testConnection()} — мягкая проверка для выбора режима работы приложения:
  *   БД поднята — реальные DAO, БД недоступна — стабы. Исключений не бросает.
  *
  * Если нужна теория — она в самом конце файла.
@@ -44,6 +36,8 @@ public class DatabaseManager {
     private static final String KEY_URL = "db.url";
     private static final String KEY_USER = "db.user";
     private static final String KEY_PASSWORD = "db.password";
+    private static final String KEY_DRIVER = "db.driver";
+    private static final String DEFAULT_DRIVER = "org.postgresql.Driver";
 
     /** Таймаут проверки соединения, секунды. */
     private static final int VALIDATION_TIMEOUT_SEC = 3;
@@ -54,20 +48,37 @@ public class DatabaseManager {
     private final String password;
 
     /**
-     * Читает конфиг и валидирует его.
+     * Читает конфиг из {@code database.properties} и валидирует его.
      *
      * @throws IllegalStateException если {@code database.properties} отсутствует в classpath
      *                               или в нём пустое/отсутствующее значение — fail-fast
      *                               с понятным текстом вместо NPE.
      */
     public DatabaseManager() {
-        Properties props = loadProperties();
+        this(CONFIG_FILE);
+    }
 
-        this.url = require(props, KEY_URL);
-        this.user = require(props, KEY_USER);
-        this.password = require(props, KEY_PASSWORD);
+    /**
+     * Конструктор с явным указанием пути к файлу конфигурации.
+     * Удобен для тестов, когда нужно подменить конфиг.
+     *
+     * @param configPath путь к файлу конфигурации в classpath
+     */
+    public DatabaseManager(String configPath) {
+        Properties props = loadProperties(configPath);
 
-        log.info("Конфигурация БД загружена из {}: url={}, user={}", CONFIG_FILE, url, user);
+        this.url = require(props, KEY_URL, configPath);
+        this.user = require(props, KEY_USER, configPath);
+        this.password = require(props, KEY_PASSWORD, configPath);
+
+        String driver = props.getProperty(KEY_DRIVER, DEFAULT_DRIVER);
+        try {
+            Class.forName(driver);
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("JDBC драйвер не найден: " + driver, e);
+        }
+
+        log.info("Конфигурация БД загружена из {}: url={}, user={}", configPath, url, user);
     }
 
     /**
@@ -107,24 +118,30 @@ public class DatabaseManager {
         return url;
     }
 
+    /** Имя пользователя из конфига. */
+    public String getUser() {
+        return user;
+    }
+
     /**
-     * Читает {@code database.properties} из classpath.
+     * Читает файл конфигурации из classpath.
      *
+     * @param configPath путь к ресурсу в classpath
      * @throws IllegalStateException если ресурса нет или он не читается
      */
-    private static Properties loadProperties() {
+    private static Properties loadProperties(String configPath) {
         Properties props = new Properties();
 
-        try (InputStream in = DatabaseManager.class.getClassLoader().getResourceAsStream(CONFIG_FILE)) {
+        try (InputStream in = DatabaseManager.class.getClassLoader().getResourceAsStream(configPath)) {
             if (in == null) {
                 throw new IllegalStateException(
-                        "database.properties не найден в classpath (" + CONFIG_FILE + "). "
-                                + "Проверь, что файл src/main/resources/" + CONFIG_FILE + " попал в target/classes");
+                        "Конфигурационный файл '" + configPath + "' не найден в classpath. "
+                                + "Проверь, что файл src/main/resources/" + configPath + " попал в target/classes");
             }
             props.load(in);
         } catch (IOException e) {
             throw new IllegalStateException(
-                    "Не удалось прочитать " + CONFIG_FILE + " из classpath: " + e.getMessage(), e);
+                    "Ошибка чтения конфигурационного файла '" + configPath + "': " + e.getMessage(), e);
         }
 
         return props;
@@ -133,16 +150,18 @@ public class DatabaseManager {
     /**
      * Достаёт обязательный ключ или падает с fail-fast.
      *
-     * @param key имя ключа в {@code database.properties}
+     * @param props      properties-файл
+     * @param key        имя ключа в конфиге
+     * @param configPath путь к конфигу (для сообщения об ошибке)
      * @return непустое значение ключа
      * @throws IllegalStateException если ключ отсутствует или его значение пустое
      */
-    private static String require(Properties props, String key) {
+    private static String require(Properties props, String key, String configPath) {
         String value = props.getProperty(key);
 
         if (value == null || value.isBlank()) {
             throw new IllegalStateException(
-                    "database.properties не найден или " + key + " не задан");
+                    "Параметр '" + key + "' не задан в " + configPath);
         }
 
         return value.trim();

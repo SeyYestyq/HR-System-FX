@@ -27,6 +27,10 @@
     -fx-font-size: 12px;
     -fx-text-fill: #5fe187 !important;
 }
+.header-status-stub {
+    -fx-font-size: 12px;
+    -fx-text-fill: #ffb020 !important;
+}
 
 .toolbar-panel {
     -fx-background-color: white;
