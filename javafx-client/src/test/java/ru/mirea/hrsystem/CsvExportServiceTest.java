@@ -34,7 +34,6 @@ class CsvExportServiceTest {
 
         assertThat(targetFile).exists();
 
-        // Проверка BOM (0xEF, 0xBB, 0xBF)
         byte[] bytes = Files.readAllBytes(targetFile.toPath());
         assertThat(bytes.length).isGreaterThan(3);
         assertThat(bytes[0]).isEqualTo((byte) 0xEF);
@@ -43,7 +42,7 @@ class CsvExportServiceTest {
 
         List<String> lines = Files.readAllLines(targetFile.toPath(), StandardCharsets.UTF_8);
         assertThat(lines).hasSize(2);
-        // lines.get(0) содержит символ BOM \uFEFF в самом начале файла
+
         assertThat(lines.get(0)).isEqualTo("\uFEFFID;Название вакансии;Компания;Зарплата от;Зарплата до;Статус;Описание");
         assertThat(lines.get(1)).isEqualTo("1;Java Dev;Яндекс;150000;200000;ACTIVE;Spring & SQL");
     }
@@ -62,9 +61,8 @@ class CsvExportServiceTest {
         List<String> lines = Files.readAllLines(targetFile.toPath(), StandardCharsets.UTF_8);
         String dataLine = lines.get(1);
 
-        // Разделяем по CSV_DELIMITER (;)
         String[] columns = dataLine.split(";", -1);
-        // Должно быть ровно 7 колонок: ID, Название, Компания, Зарплата от, Зарплата до, Статус, Описание
+
         assertThat(columns).hasSize(7);
         assertThat(columns[0]).isEqualTo("2");
         assertThat(columns[1]).isEqualTo("Lead Developer, Java & Cloud");

@@ -32,11 +32,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-/**
- * Главный FXML-контроллер настольного интерфейса HireSystem.
- * Отвечает за реактивную привязку элементов к модели данных,
- * живую фильтрацию, сортировку и асинхронное выполнение операций.
- */
 public class MainController {
     private static final Logger log = LoggerFactory.getLogger(MainController.class);
     private static final PseudoClass ARCHIVED_PSEUDO_CLASS = PseudoClass.getPseudoClass("archived");
@@ -49,7 +44,6 @@ public class MainController {
         MONEY_FORMAT = new DecimalFormat("#,##0", symbols);
     }
 
-    // UI элементы из MainView.fxml
     @FXML private Label dbStatusLabel;
     @FXML private Button refreshButton;
     @FXML private Button addButton;
@@ -71,11 +65,9 @@ public class MainController {
 
     @FXML private Label countLabel;
 
-    // Реактивные коллекции
     private final ObservableList<Vacancy> masterData = FXCollections.observableArrayList();
     private FilteredList<Vacancy> filteredData;
 
-    // Сервисные зависимости
     private VacancyService vacancyService;
     private UserDao userDao;
     private StatisticsService statisticsService;
@@ -89,9 +81,6 @@ public class MainController {
         setupTableRowFactory();
     }
 
-    /**
-     * Внедрение зависимостей сервисного слоя при старте приложения.
-     */
     public void initDependencies(VacancyService vacancyService, UserDao userDao,
                                  StatisticsService statisticsService, CsvExportService csvExportService) {
         this.vacancyService = vacancyService;
@@ -102,17 +91,14 @@ public class MainController {
         loadDataFromService();
     }
 
-    /**
-     * Отображает актуальный статус подключения к БД в верхней панели.
-     */
     public void setDbStatus(boolean dbAvailable) {
         if (dbStatusLabel != null) {
             dbStatusLabel.getStyleClass().removeAll("header-status", "header-status-stub");
             if (dbAvailable) {
-                dbStatusLabel.setText("🟢 PostgreSQL подключен");
+                dbStatusLabel.setText("PostgreSQL подключен");
                 dbStatusLabel.getStyleClass().add("header-status");
             } else {
-                dbStatusLabel.setText("🟠 Автономный режим (Stub)");
+                dbStatusLabel.setText("Автономный режим (Stub)");
                 dbStatusLabel.getStyleClass().add("header-status-stub");
             }
         }
@@ -214,7 +200,6 @@ public class MainController {
                 return false;
             }
 
-            // 1. Поиск по подстроке в названии, компании или описании
             if (!query.isEmpty()) {
                 String title = vacancy.getTitle() != null ? vacancy.getTitle().toLowerCase() : "";
                 String company = vacancy.getEmployerCompanyName() != null ? vacancy.getEmployerCompanyName().toLowerCase() : "";
@@ -226,30 +211,23 @@ public class MainController {
                 }
             }
 
-            // 2. Фильтр по статусу
             if (status != null && !status.equals("Все статусы")) {
                 if (vacancy.getStatus() == null || !vacancy.getStatus().name().equalsIgnoreCase(status)) {
                     return false;
                 }
             }
 
-            // 3. Фильтр по зарплатному диапазону
             return matchesSalaryRange(vacancy, salaryRange);
         });
 
         updateCountLabel();
     }
 
-    /**
-     * Проверяет, соответствует ли вакансия критериям фильтрации.
-     * Package-private static для тестируемости (используется в VacancyFilterTest).
-     */
     static boolean matches(Vacancy vacancy, String query, String status, String salaryRange) {
         if (vacancy == null) {
             return false;
         }
 
-        // 1. Поиск по подстроке
         if (query != null && !query.isEmpty()) {
             String q = query.toLowerCase();
             String title = vacancy.getTitle() != null ? vacancy.getTitle().toLowerCase() : "";
@@ -261,14 +239,12 @@ public class MainController {
             }
         }
 
-        // 2. Фильтр по статусу
         if (status != null && !status.equals("Все статусы")) {
             if (vacancy.getStatus() == null || !vacancy.getStatus().name().equalsIgnoreCase(status)) {
                 return false;
             }
         }
 
-        // 3. Фильтр по зарплатному диапазону
         return matchesSalaryRange(vacancy, salaryRange);
     }
 
@@ -316,8 +292,6 @@ public class MainController {
     private Stage getStage() {
         return (Stage) vacancyTableView.getScene().getWindow();
     }
-
-    // --- Обработчики действий UI ---
 
     @FXML
     public void handleRefresh() {
@@ -406,7 +380,7 @@ public class MainController {
                                 },
                                 updated -> {
                                     setBusy(false);
-                                    // Обновляем ссылку в masterData для реактивной перерисовки строки
+
                                     for (int i = 0; i < masterData.size(); i++) {
                                         if (masterData.get(i).getId().equals(updated.getId())) {
                                             masterData.set(i, updated);
@@ -502,7 +476,6 @@ public class MainController {
             return;
         }
 
-        // Захват снимка данных (snapshot) на UI-потоке для потокобезопасности
         List<Vacancy> snapshot = new ArrayList<>(filteredData);
 
         exportButton.setDisable(true);

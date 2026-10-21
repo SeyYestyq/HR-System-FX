@@ -19,10 +19,6 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 
-/**
- * Модальное окно аналитики и статистики (5 ключевых показателей).
- * Сверстано программно без FXML с применением CSS-классов из app.css.
- */
 public class StatisticsDialog {
 
     private static final DecimalFormat CURRENCY_FORMAT;
@@ -48,7 +44,7 @@ public class StatisticsDialog {
         root.setPadding(new Insets(20));
         root.setAlignment(Pos.TOP_CENTER);
 
-        Label headerTitle = new Label("📊 Ключевые метрики рынка труда");
+        Label headerTitle = new Label("Ключевые метрики рынка труда");
         headerTitle.getStyleClass().add("header-title");
 
         GridPane grid = new GridPane();
@@ -56,15 +52,15 @@ public class StatisticsDialog {
         grid.setVgap(15);
         grid.setAlignment(Pos.CENTER);
 
-        VBox totalCard = createMetricCard("Всего вакансий", String.valueOf(dto.totalVacancies()), "📄");
-        VBox activeCard = createMetricCard("Активных вакансий", String.valueOf(dto.activeVacancies()), "🟢");
-        VBox archivedCard = createMetricCard("В архиве", String.valueOf(dto.archivedVacancies()), "📦");
+        VBox totalCard = createMetricCard("Всего вакансий", String.valueOf(dto.totalVacancies()));
+        VBox activeCard = createMetricCard("Активных вакансий", String.valueOf(dto.activeVacancies()));
+        VBox archivedCard = createMetricCard("В архиве", String.valueOf(dto.archivedVacancies()));
 
         String avgSalaryText = formatMoney(dto.averageSalaryMin());
-        VBox avgSalaryCard = createMetricCard("Средняя зарплата от", avgSalaryText, "💰");
+        VBox avgSalaryCard = createMetricCard("Средняя зарплата от", avgSalaryText);
 
         String maxSalaryText = formatMoney(dto.maxSalary());
-        VBox maxSalaryCard = createMetricCard("Максимальная зарплата", maxSalaryText, "🏆");
+        VBox maxSalaryCard = createMetricCard("Максимальная зарплата", maxSalaryText);
 
         grid.add(totalCard, 0, 0);
         grid.add(activeCard, 1, 0);
@@ -95,22 +91,18 @@ public class StatisticsDialog {
         stage.showAndWait();
     }
 
-    private static VBox createMetricCard(String title, String value, String icon) {
+    private static VBox createMetricCard(String title, String value) {
         VBox card = new VBox(6);
         card.getStyleClass().add("metric-card");
         card.setAlignment(Pos.CENTER_LEFT);
 
-        HBox titleBox = new HBox(6);
-        titleBox.setAlignment(Pos.CENTER_LEFT);
-        Label iconLabel = new Label(icon);
         Label titleLabel = new Label(title);
         titleLabel.getStyleClass().add("metric-title");
-        titleBox.getChildren().addAll(iconLabel, titleLabel);
 
         Label valueLabel = new Label(value);
         valueLabel.getStyleClass().add("metric-value");
 
-        card.getChildren().addAll(titleBox, valueLabel);
+        card.getChildren().addAll(titleLabel, valueLabel);
         return card;
     }
 

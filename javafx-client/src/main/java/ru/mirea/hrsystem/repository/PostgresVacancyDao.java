@@ -13,11 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * JDBC реализация доступа к данным вакансий в PostgreSQL.
- * Использует исключительно PreparedStatement для предотвращения SQL Injection
- * и try-with-resources для корректного освобождения сетевых и серверных дескрипторов.
- */
 public class PostgresVacancyDao implements VacancyDao {
     private static final Logger log = LoggerFactory.getLogger(PostgresVacancyDao.class);
 

@@ -2,7 +2,6 @@ package ru.mirea.hrsystem.ui;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.util.StringConverter;
 import ru.mirea.hrsystem.model.User;
 import ru.mirea.hrsystem.model.Vacancy;
 import ru.mirea.hrsystem.model.VacancyStatus;
@@ -10,11 +9,6 @@ import ru.mirea.hrsystem.model.VacancyStatus;
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * FXML-контроллер модального диалога создания и редактирования вакансии.
- * Выполняет привязку UI-элементов, предварительное заполнение формы
- * и клиентскую валидацию ввода перед закрытием диалога.
- */
 public class VacancyDialogController {
 
     @FXML private TextField titleField;
@@ -33,61 +27,27 @@ public class VacancyDialogController {
             statusComboBox.getItems().setAll(VacancyStatus.values());
             statusComboBox.setValue(VacancyStatus.ACTIVE);
         }
-
         if (employerComboBox != null) {
-            employerComboBox.setConverter(new StringConverter<>() {
+            employerComboBox.setConverter(new javafx.util.StringConverter<>() {
                 @Override
                 public String toString(User user) {
                     if (user == null) {
                         return "";
                     }
-                    if (user.getCompanyName() != null && !user.getCompanyName().isBlank()) {
-                        return user.getCompanyName() + " (" + user.getEmail() + ")";
-                    }
-                    return user.getFullName() + " (" + user.getEmail() + ")";
+                    String name = (user.getCompanyName() != null && !user.getCompanyName().isBlank())
+                            ? user.getCompanyName()
+                            : user.getFullName();
+                    return name + " (" + user.getEmail() + ")";
                 }
-
                 @Override
                 public User fromString(String string) {
                     return null;
                 }
             });
         }
-
         if (errorLabel != null) {
             errorLabel.setText("");
         }
-
-        setupValidationReset();
-    }
-
-    private void setupValidationReset() {
-        if (titleField != null) {
-            titleField.textProperty().addListener((obs, o, n) -> clearError());
-        }
-        if (employerComboBox != null) {
-            employerComboBox.valueProperty().addListener((obs, o, n) -> clearError());
-        }
-        if (salaryMinField != null) {
-            salaryMinField.textProperty().addListener((obs, o, n) -> clearError());
-        }
-        if (salaryMaxField != null) {
-            salaryMaxField.textProperty().addListener((obs, o, n) -> clearError());
-        }
-    }
-
-    private void clearError() {
-        if (errorLabel != null) {
-            errorLabel.setText("");
-        }
-        resetFieldStyles();
-    }
-
-    private void resetFieldStyles() {
-        if (titleField != null) titleField.setStyle("");
-        if (employerComboBox != null) employerComboBox.setStyle("");
-        if (salaryMinField != null) salaryMinField.setStyle("");
-        if (salaryMaxField != null) salaryMaxField.setStyle("");
     }
 
     public void setEmployers(List<User> employers) {
@@ -106,7 +66,7 @@ public class VacancyDialogController {
         }
 
         if (titleField != null) {
-            titleField.setText(vacancy.getTitle() != null ? vacancy.getTitle() : "");
+            titleField.setText(vacancy.getTitle());
         }
         if (descriptionArea != null) {
             descriptionArea.setText(vacancy.getDescription() != null ? vacancy.getDescription() : "");
@@ -120,98 +80,87 @@ public class VacancyDialogController {
         if (statusComboBox != null && vacancy.getStatus() != null) {
             statusComboBox.setValue(vacancy.getStatus());
         }
-
         if (employerComboBox != null && vacancy.getEmployerId() != null) {
-            for (User u : employerComboBox.getItems()) {
-                if (u.getId() != null && u.getId().equals(vacancy.getEmployerId())) {
-                    employerComboBox.setValue(u);
-                    break;
-                }
-            }
+            employerComboBox.getItems().stream()
+                    .filter(u -> vacancy.getEmployerId().equals(u.getId()))
+                    .findFirst()
+                    .ifPresent(employerComboBox::setValue);
         }
     }
 
-    /**
-     * Валидирует заполнение полей формы.
-     * Возвращает true, если все поля корректны, иначе выводит текст ошибки и возвращает false.
-     */
     public boolean validate() {
-        resetFieldStyles();
-
-        String title = titleField != null && titleField.getText() != null ? titleField.getText().trim() : "";
-        if (title.length() < 3 || title.length() > 100) {
-            showError("Название вакансии обязательно (от 3 до 100 символов)", titleField);
+        clearErrorStyles();
+        if (titleField == null || titleField.getText() == null || titleField.getText().isBlank()){
+            showError("Название вакансии обязательно для заполнения", titleField);
             return false;
         }
-
-        User employer = employerComboBox != null ? employerComboBox.getValue() : null;
-        if (employer == null) {
-            showError("Необходимо выбрать работодателя (компанию)", employerComboBox);
+        if (employerComboBox == null || employerComboBox.getValue() == null) {
+            showError("Выберите компанию-работодателя", employerComboBox);
             return false;
         }
-
-        BigDecimal minSalary = null;
-        String minText = salaryMinField != null && salaryMinField.getText() != null ? salaryMinField.getText().trim() : "";
-        if (!minText.isEmpty()) {
+        BigDecimal min = null;
+        BigDecimal max = null;
+        if (salaryMinField != null && salaryMinField.getText() != null && !salaryMinField.getText().isBlank()) {
             try {
-                minSalary = new BigDecimal(minText);
-                if (minSalary.compareTo(BigDecimal.ZERO) < 0) {
-                    showError("Минимальная зарплата не может быть отрицательной", salaryMinField);
+                min = new BigDecimal(salaryMinField.getText().trim().replace(" ", ""));
+                if (min.compareTo(BigDecimal.ZERO) < 0) {
+                    showError("Зарплата 'от' не может быть отрицательной", salaryMinField);
                     return false;
                 }
             } catch (NumberFormatException e) {
-                showError("Минимальная зарплата должна быть числом", salaryMinField);
+                showError("Зарплата 'от' должна быть числом", salaryMinField);
                 return false;
             }
         }
-
-        BigDecimal maxSalary = null;
-        String maxText = salaryMaxField != null && salaryMaxField.getText() != null ? salaryMaxField.getText().trim() : "";
-        if (!maxText.isEmpty()) {
+        if (salaryMaxField != null && salaryMaxField.getText() != null && !salaryMaxField.getText().isBlank()) {
             try {
-                maxSalary = new BigDecimal(maxText);
-                if (maxSalary.compareTo(BigDecimal.ZERO) < 0) {
-                    showError("Максимальная зарплата не может быть отрицательной", salaryMaxField);
+                max = new BigDecimal(salaryMaxField.getText().trim().replace(" ", ""));
+                if (max.compareTo(BigDecimal.ZERO) < 0) {
+                    showError("Зарплата 'до' не может быть отрицательной", salaryMaxField);
                     return false;
                 }
             } catch (NumberFormatException e) {
-                showError("Максимальная зарплата должна быть числом", salaryMaxField);
+                showError("Зарплата 'до' должна быть числом", salaryMaxField);
                 return false;
             }
         }
-
-        if (minSalary != null && maxSalary != null && maxSalary.compareTo(minSalary) < 0) {
-            showError("Максимальная зарплата (" + maxSalary + ") не может быть меньше минимальной (" + minSalary + ")", salaryMaxField);
+        if (min != null && max != null && min.compareTo(max) > 0) {
+            showError("Зарплата 'от' не может превышать зарплату 'до'", salaryMinField);
             return false;
         }
-
-        clearError();
+        if (errorLabel != null) {
+            errorLabel.setText("");
+        }
         return true;
     }
 
-    private void showError(String message, Control faultyControl) {
+    private void showError(String message, Control field) {
         if (errorLabel != null) {
             errorLabel.setText(message);
         }
-        if (faultyControl != null) {
-            faultyControl.setStyle("-fx-border-color: #c73545; -fx-focus-color: #c73545;");
-            faultyControl.requestFocus();
+        if (field != null) {
+            field.setStyle("-fx-border-color: #c73545; -fx-border-width: 1.5px; -fx-border-radius: 3px");
+            field.requestFocus();
         }
     }
 
-    /**
-     * Создает или обновляет модель Vacancy из значений формы.
-     */
+    private void clearErrorStyles() {
+        if (titleField != null) titleField.setStyle("");
+        if (employerComboBox != null) employerComboBox.setStyle("");
+        if (salaryMinField != null) salaryMinField.setStyle("");
+        if (salaryMaxField != null) salaryMaxField.setStyle("");
+    }
+
     public Vacancy buildVacancy() {
         Vacancy v = existingVacancy != null ? existingVacancy : new Vacancy();
 
-        v.setTitle(titleField.getText().trim());
+        v.setTitle(titleField != null && titleField.getText() != null ? titleField.getText().trim() : "");
         v.setDescription(descriptionArea != null && descriptionArea.getText() != null ? descriptionArea.getText().trim() : "");
 
-        String minText = salaryMinField != null && salaryMinField.getText() != null ? salaryMinField.getText().trim() : "";
+        String minText = salaryMinField != null && salaryMinField.getText() != null ? salaryMinField.getText().trim().replace(" ", "") : "";
         v.setSalaryMin(!minText.isEmpty() ? new BigDecimal(minText) : null);
 
-        String maxText = salaryMaxField != null && salaryMaxField.getText() != null ? salaryMaxField.getText().trim() : "";
+        String maxText = salaryMaxField != null && salaryMaxField.getText() != null ? salaryMaxField.getText().trim().replace(" ", "") : "";
         v.setSalaryMax(!maxText.isEmpty() ? new BigDecimal(maxText) : null);
 
         v.setStatus(statusComboBox != null && statusComboBox.getValue() != null ? statusComboBox.getValue() : VacancyStatus.ACTIVE);

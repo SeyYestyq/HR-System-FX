@@ -30,9 +30,9 @@ class DatabaseManagerTest {
     @DisplayName("Безопасная проверка testConnection при отсутствии запущенной БД возвращает false")
     void shouldReturnFalseSafelyWhenDbNotReachable() {
         DatabaseManager dbManager = new DatabaseManager();
-        // В окружении без запущенного контейнера hr_system_postgres метод должен возвращать false без падения
+
         boolean isConnected = dbManager.testConnection();
-        // Метод не должен бросать исключений
+
         assertThat(isConnected).isIn(true, false);
     }
 }

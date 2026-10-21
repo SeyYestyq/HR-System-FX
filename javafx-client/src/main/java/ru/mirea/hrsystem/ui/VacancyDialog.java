@@ -18,22 +18,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Обертка модального диалогового окна создания и редактирования вакансии.
- * Загружает FXML-разметку, настраивает кнопки OK/Cancel и перехватывает событие закрытия
- * через EventFilter для предотвращения потери несохраненных данных при ошибках валидации.
- */
 public class VacancyDialog {
     private static final Logger log = LoggerFactory.getLogger(VacancyDialog.class);
 
-    /**
-     * Отображает модальный диалог и возвращает результат редактирования.
-     *
-     * @param owner           родительское окно
-     * @param existingVacancy редактируемая вакансия (null для новой)
-     * @param employers       список зарегистрированных работодателей
-     * @return Optional с объектом Vacancy при подтверждении сохранения
-     */
     public static Optional<Vacancy> show(Window owner, Vacancy existingVacancy, List<User> employers) {
         Dialog<Vacancy> dialog = new Dialog<>();
         dialog.initOwner(owner);
@@ -52,7 +39,6 @@ public class VacancyDialog {
             dialogPane.setContent(content);
             dialogPane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-            // Подключаем общие стили
             String cssPath = VacancyDialog.class.getResource("/ru/mirea/hrsystem/css/app.css") != null
                     ? VacancyDialog.class.getResource("/ru/mirea/hrsystem/css/app.css").toExternalForm()
                     : null;
@@ -65,7 +51,6 @@ public class VacancyDialog {
                 okButton.setText(existingVacancy != null ? "Сохранить" : "Создать");
                 okButton.getStyleClass().add("primary-button");
 
-                // EventFilter не закрывает окно при ошибках валидации
                 okButton.addEventFilter(ActionEvent.ACTION, event -> {
                     if (!controller.validate()) {
                         event.consume();
