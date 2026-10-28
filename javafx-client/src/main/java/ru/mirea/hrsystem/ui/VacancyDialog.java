@@ -51,6 +51,8 @@ public class VacancyDialog {
                 okButton.setText(existingVacancy != null ? "Сохранить" : "Создать");
                 okButton.getStyleClass().add("primary-button");
 
+                controller.setOkButton(okButton);
+
                 okButton.addEventFilter(ActionEvent.ACTION, event -> {
                     if (!controller.validate()) {
                         event.consume();

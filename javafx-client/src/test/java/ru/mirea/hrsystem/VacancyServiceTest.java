@@ -73,6 +73,40 @@ class VacancyServiceTest {
     }
 
     @Test
+    @DisplayName("Ошибка валидации: отрицательная зарплата 'от'")
+    void shouldThrowExceptionWhenMinSalaryIsNegative() {
+        Vacancy invalid = new Vacancy(null, "Java Dev", "Testing",
+                new BigDecimal("-50000"), new BigDecimal("100000"), VacancyStatus.ACTIVE, 1L);
+
+        assertThatThrownBy(() -> service.createVacancy(invalid))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("не может быть отрицательной");
+    }
+
+    @Test
+    @DisplayName("Ошибка валидации: отрицательная зарплата 'до'")
+    void shouldThrowExceptionWhenMaxSalaryIsNegative() {
+        Vacancy invalid = new Vacancy(null, "Java Dev", "Testing",
+                new BigDecimal("50000"), new BigDecimal("-100000"), VacancyStatus.ACTIVE, 1L);
+
+        assertThatThrownBy(() -> service.createVacancy(invalid))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("не может быть отрицательной");
+    }
+
+    @Test
+    @DisplayName("Ошибка валидации: название вакансии превышает 100 символов")
+    void shouldThrowExceptionWhenTitleIsTooLong() {
+        String longTitle = "A".repeat(101);
+        Vacancy invalid = new Vacancy(null, longTitle, "Testing",
+                new BigDecimal("50000"), new BigDecimal("100000"), VacancyStatus.ACTIVE, 1L);
+
+        assertThatThrownBy(() -> service.createVacancy(invalid))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("не может превышать 100 символов");
+    }
+
+    @Test
     @DisplayName("Ошибка бизнес-правила: повторная архивация вакансии")
     void shouldThrowExceptionWhenReArchivingVacancy() {
         Vacancy vacancy = service.createVacancy(new Vacancy(null, "DevOps Engineer", "Docker",

@@ -141,3 +141,36 @@
     -fx-font-size: 12px;
     -fx-text-fill: #687086;
 }
+
+.input-error {
+    -fx-border-color: #c73545 !important;
+    -fx-border-width: 1.5px !important;
+    -fx-border-radius: 8px !important;
+}
+
+.input-valid {
+    -fx-border-color: #2da44e !important;
+    -fx-border-width: 1.5px !important;
+    -fx-border-radius: 8px !important;
+}
+
+.field-error-label {
+    -fx-text-fill: #c73545;
+    -fx-font-size: 11px;
+}
+
+.field-hint-label {
+    -fx-text-fill: #8c95a6;
+    -fx-font-size: 11px;
+}
+
+.general-error-label {
+    -fx-text-fill: #c73545;
+    -fx-font-weight: bold;
+    -fx-padding: 6 10;
+    -fx-background-color: #fff0f0;
+    -fx-background-radius: 6;
+    -fx-border-color: #ffccd0;
+    -fx-border-radius: 6;
+}
+

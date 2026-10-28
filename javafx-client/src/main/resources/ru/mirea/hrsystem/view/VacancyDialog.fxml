@@ -6,33 +6,68 @@
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="ru.mirea.hrsystem.ui.VacancyDialogController"
-      spacing="10">
+      spacing="12" prefWidth="490">
 
-    <padding><Insets top="10" right="10" bottom="0" left="10"/></padding>
+    <padding><Insets top="14" right="16" bottom="10" left="16"/></padding>
 
-    <GridPane hgap="10" vgap="10">
-        <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+    <GridPane hgap="12" vgap="8">
+        <padding><Insets top="4" right="4" bottom="8" left="4"/></padding>
 
-        <Label text="Название вакансии *:" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-        <TextField fx:id="titleField" prefWidth="300" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+        <columnConstraints>
+            <ColumnConstraints minWidth="150" prefWidth="160"/>
+            <ColumnConstraints minWidth="280" prefWidth="300" hgrow="ALWAYS"/>
+        </columnConstraints>
 
-        <Label text="Работодатель (Компания) *:" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-        <ComboBox fx:id="employerComboBox" prefWidth="300" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+        <!-- Название вакансии -->
+        <Label text="Название вакансии *:" GridPane.columnIndex="0" GridPane.rowIndex="0" style="-fx-padding: 6 0 0 0;"/>
+        <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="0">
+            <TextField fx:id="titleField" promptText="Например: Senior Java Developer"/>
+            <HBox spacing="5" alignment="CENTER_LEFT">
+                <Label fx:id="titleErrorLabel" styleClass="field-error-label" visible="false" managed="false"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="titleCountLabel" styleClass="field-hint-label" text="0/100"/>
+            </HBox>
+        </VBox>
 
-        <Label text="Зарплата от (₽):" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
-        <TextField fx:id="salaryMinField" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+        <!-- Работодатель -->
+        <Label text="Работодатель *:" GridPane.columnIndex="0" GridPane.rowIndex="1" style="-fx-padding: 6 0 0 0;"/>
+        <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="1">
+            <ComboBox fx:id="employerComboBox" maxWidth="Infinity" promptText="Выберите компанию..."/>
+            <Label fx:id="employerErrorLabel" styleClass="field-error-label" visible="false" managed="false"/>
+        </VBox>
 
-        <Label text="Зарплата до (₽):" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
-        <TextField fx:id="salaryMaxField" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+        <!-- Зарплата от -->
+        <Label text="Зарплата от (₽):" GridPane.columnIndex="0" GridPane.rowIndex="2" style="-fx-padding: 6 0 0 0;"/>
+        <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="2">
+            <TextField fx:id="salaryMinField" promptText="Например: 150 000"/>
+            <Label fx:id="salaryMinErrorLabel" styleClass="field-error-label" visible="false" managed="false"/>
+        </VBox>
 
-        <Label text="Статус:" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
-        <ComboBox fx:id="statusComboBox" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+        <!-- Зарплата до -->
+        <Label text="Зарплата до (₽):" GridPane.columnIndex="0" GridPane.rowIndex="3" style="-fx-padding: 6 0 0 0;"/>
+        <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="3">
+            <TextField fx:id="salaryMaxField" promptText="Например: 250 000"/>
+            <Label fx:id="salaryMaxErrorLabel" styleClass="field-error-label" visible="false" managed="false"/>
+        </VBox>
 
-        <Label text="Описание:" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
-        <TextArea fx:id="descriptionArea" prefRowCount="3" prefWidth="300" wrapText="true"
-                  GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+        <!-- Статус -->
+        <Label text="Статус:" GridPane.columnIndex="0" GridPane.rowIndex="4" style="-fx-padding: 6 0 0 0;"/>
+        <ComboBox fx:id="statusComboBox" maxWidth="Infinity" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+
+        <!-- Описание -->
+        <Label text="Описание:" GridPane.columnIndex="0" GridPane.rowIndex="5" style="-fx-padding: 6 0 0 0;"/>
+        <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="5">
+            <TextArea fx:id="descriptionArea" prefRowCount="3" wrapText="true"
+                      promptText="Краткие требования, стек технологий, условия..."/>
+            <HBox spacing="5" alignment="CENTER_LEFT">
+                <Label fx:id="descriptionErrorLabel" styleClass="field-error-label" visible="false" managed="false"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="descriptionCountLabel" styleClass="field-hint-label" text="0/2000"/>
+            </HBox>
+        </VBox>
     </GridPane>
 
-    <Label fx:id="errorLabel" wrapText="true"
-           style="-fx-text-fill: #c73545; -fx-font-weight: bold;"/>
+    <!-- Общий баннер ошибок -->
+    <Label fx:id="errorLabel" wrapText="true" styleClass="general-error-label" visible="false" managed="false"/>
 </VBox>
+

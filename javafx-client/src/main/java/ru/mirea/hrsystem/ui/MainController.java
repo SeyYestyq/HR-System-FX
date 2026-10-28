@@ -11,6 +11,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mirea.hrsystem.model.User;
@@ -289,8 +290,14 @@ public class MainController {
         }
     }
 
-    private Stage getStage() {
-        return (Stage) vacancyTableView.getScene().getWindow();
+    private Window getStage() {
+        if (vacancyTableView != null && vacancyTableView.getScene() != null) {
+            Window window = vacancyTableView.getScene().getWindow();
+            if (window != null) {
+                return window;
+            }
+        }
+        return UiUtils.findActiveWindow();
     }
 
     @FXML
@@ -320,7 +327,7 @@ public class MainController {
                 error -> {
                     setBusy(false);
                     log.error("Ошибка загрузки вакансий", error);
-                    UiUtils.showErrorAlert("Ошибка загрузки", "Не удалось загрузить вакансии: " + error.getMessage());
+                    UiUtils.showErrorAlert(getStage(), "Ошибка загрузки", "Не удалось загрузить вакансии: " + error.getMessage());
                 }
         );
     }
@@ -342,18 +349,18 @@ public class MainController {
                                     masterData.add(0, created);
                                     vacancyTableView.getSelectionModel().select(created);
                                     updateCountLabel();
-                                    UiUtils.showInfoAlert("Успех", "Вакансия '" + created.getTitle() + "' успешно добавлена!");
+                                    UiUtils.showInfoAlert(getStage(), "Успех", "Вакансия '" + created.getTitle() + "' успешно добавлена!");
                                 },
                                 error -> {
                                     setBusy(false);
-                                    UiUtils.showErrorAlert("Ошибка сохранения", error.getMessage());
+                                    UiUtils.showErrorAlert(getStage(), "Ошибка сохранения", error.getMessage());
                                 }
                         );
                     });
                 },
                 error -> {
                     setBusy(false);
-                    UiUtils.showErrorAlert("Ошибка получения работодателей", error.getMessage());
+                    UiUtils.showErrorAlert(getStage(), "Ошибка получения работодателей", error.getMessage());
                 }
         );
     }
@@ -380,7 +387,7 @@ public class MainController {
                                 },
                                 updated -> {
                                     setBusy(false);
-
+                                
                                     for (int i = 0; i < masterData.size(); i++) {
                                         if (masterData.get(i).getId().equals(updated.getId())) {
                                             masterData.set(i, updated);
@@ -389,18 +396,18 @@ public class MainController {
                                     }
                                     vacancyTableView.refresh();
                                     updateCountLabel();
-                                    UiUtils.showInfoAlert("Успех", "Вакансия '" + updated.getTitle() + "' успешно обновлена!");
+                                    UiUtils.showInfoAlert(getStage(), "Успех", "Вакансия '" + updated.getTitle() + "' успешно обновлена!");
                                 },
                                 error -> {
                                     setBusy(false);
-                                    UiUtils.showErrorAlert("Ошибка обновления", error.getMessage());
+                                    UiUtils.showErrorAlert(getStage(), "Ошибка обновления", error.getMessage());
                                 }
                         );
                     });
                 },
                 error -> {
                     setBusy(false);
-                    UiUtils.showErrorAlert("Ошибка получения работодателей", error.getMessage());
+                    UiUtils.showErrorAlert(getStage(), "Ошибка получения работодателей", error.getMessage());
                 }
         );
     }
@@ -431,11 +438,11 @@ public class MainController {
                     setBusy(false);
                     masterData.remove(selected);
                     updateCountLabel();
-                    UiUtils.showInfoAlert("Успех", "Вакансия успешно удалена");
+                    UiUtils.showInfoAlert(getStage(), "Успех", "Вакансия успешно удалена");
                 },
                 error -> {
                     setBusy(false);
-                    UiUtils.showErrorAlert("Ошибка удаления", error.getMessage());
+                    UiUtils.showErrorAlert(getStage(), "Ошибка удаления", error.getMessage());
                 }
         );
     }
@@ -455,7 +462,7 @@ public class MainController {
                 error -> {
                     setBusy(false);
                     log.error("Ошибка расчета аналитики", error);
-                    UiUtils.showErrorAlert("Ошибка статистики", "Не удалось рассчитать метрики: " + error.getMessage());
+                    UiUtils.showErrorAlert(getStage(), "Ошибка статистики", "Не удалось рассчитать метрики: " + error.getMessage());
                 }
         );
     }
@@ -487,6 +494,7 @@ public class MainController {
                 ignored -> {
                     exportButton.setDisable(false);
                     UiUtils.showInfoAlert(
+                            getStage(),
                             "Экспорт завершен",
                             "Успешно выгружено " + snapshot.size() + " вакансий в файл:\n" + targetFile.getAbsolutePath()
                     );
@@ -494,7 +502,7 @@ public class MainController {
                 error -> {
                     exportButton.setDisable(false);
                     log.error("Ошибка экспорта CSV", error);
-                    UiUtils.showErrorAlert("Ошибка экспорта", "Не удалось выгрузить данные: " + error.getMessage());
+                    UiUtils.showErrorAlert(getStage(), "Ошибка экспорта", "Не удалось выгрузить данные: " + error.getMessage());
                 }
         );
     }
