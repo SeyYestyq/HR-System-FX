@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Найм</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/styles.css"/>
+</head>
+<body>
+<header id="topbar" class="hidden">
+  <div class="brand"><span class="mark" aria-hidden="true"></span> Найм</div>
+  <button class="link" data-nav="vacancies">Вакансии</button>
+  <button class="link" data-nav="analytics">Аналитика</button>
+  <button class="link admin-only hidden" data-nav="users">Пользователи</button>
+  <button class="link admin-only hidden" data-nav="audit">Аудит</button>
+  <span id="userLabel"></span>
+  <button class="secondary" id="logoutBtn">Выход</button>
+</header>
+
+<main>
+  <section id="view-login" class="login-screen">
+    <div class="login-story">
+      <div class="brand" style="margin-bottom:24px"><span class="mark" aria-hidden="true"></span> Найм</div>
+      <h1>Стол вакансий</h1>
+      <p class="lede">Коды, вилки и приоритет найма в одном списке</p>
+      <article class="dossier">
+        <div class="dossier-top">
+          <span class="code">VAC-2026-0001</span>
+          <span class="stamp high">HIGH</span>
+        </div>
+        <h2>Java Backend Developer</h2>
+        <div class="muted">Яндекс · удалённо</div>
+        <div class="mono" style="margin-top:16px;font-size:18px">220 000 – 320 000</div>
+      </article>
+    </div>
+    <div class="auth-pane">
+      <div class="auth-card">
+        <h1>Вход</h1>
+        <form id="loginForm">
+          <div class="field">
+            <label for="loginEmail">Email</label>
+            <input id="loginEmail" type="email" required autocomplete="username" placeholder="admin@example.org"/>
+          </div>
+          <div class="field">
+            <label for="loginPassword">Пароль</label>
+            <input id="loginPassword" type="password" required autocomplete="current-password"/>
+          </div>
+          <button type="submit">Войти</button>
+          <div id="loginError" class="error"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-password" class="login-screen hidden">
+    <div class="login-story">
+      <div class="brand" style="margin-bottom:24px"><span class="mark" aria-hidden="true"></span> Найм</div>
+      <h1>Новый пароль</h1>
+      <p class="lede">Временный пароль действует только до первой смены</p>
+    </div>
+    <div class="auth-pane">
+      <div class="auth-card">
+        <h1>Смена пароля</h1>
+        <form id="passwordForm">
+          <div class="field"><label for="currentPassword">Текущий пароль</label><input id="currentPassword" type="password" required/></div>
+          <div class="field"><label for="newPassword">Новый пароль</label><input id="newPassword" type="password" required minlength="8"/></div>
+          <div class="field"><label for="confirmPassword">Ещё раз</label><input id="confirmPassword" type="password" required minlength="8"/></div>
+          <button type="submit">Сохранить пароль</button>
+          <div id="passwordError" class="error"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <div class="container">
+    <section id="view-vacancies" class="hidden">
+      <div class="page-head">
+        <h1>Вакансии</h1>
+        <div class="toolbar">
+          <button class="primary editor-only hidden" id="createBtn">Новая вакансия</button>
+          <button class="editor-only hidden" id="bulkArchiveBtn">В архив</button>
+          <button id="exportBtn">Экспорт CSV</button>
+          <label class="file editor-only hidden">Импорт CSV <input id="importFile" type="file" accept=".csv"/></label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="filters">
+          <div><label for="fQ">Поиск</label><input id="fQ" placeholder="Название или код"/></div>
+          <div><label for="fEmployer">Работодатель</label><select id="fEmployer"><option value="">Все</option></select></div>
+          <div><label for="fStatus">Статус</label>
+            <select id="fStatus">
+              <option value="">Все</option>
+              <option value="DRAFT">Черновик</option>
+              <option value="OPEN">Открыта</option>
+              <option value="PAUSED">Пауза</option>
+              <option value="CLOSED">Закрыта</option>
+            </select>
+          </div>
+          <div><label for="fRemote">Формат</label>
+            <select id="fRemote"><option value="">Все</option><option value="true">Удалённо</option><option value="false">Офис</option></select>
+          </div>
+          <div><label for="fPriority">Приоритет</label>
+            <select id="fPriority"><option value="">Все</option><option value="HIGH">Высокий</option><option value="MEDIUM">Средний</option><option value="LOW">Низкий</option></select>
+          </div>
+          <div><label for="fTag">Тег</label><input id="fTag" placeholder="java"/></div>
+          <div><label for="fArchived">Архив</label>
+            <select id="fArchived"><option value="false">Активные</option><option value="true">Архив</option><option value="">Все</option></select>
+          </div>
+          <div><label for="fSalaryFrom">Зарплата от</label><input id="fSalaryFrom" type="number" min="0"/></div>
+          <div><label for="fSalaryTo">Зарплата до</label><input id="fSalaryTo" type="number" min="0"/></div>
+          <div class="filter-actions"><button id="searchBtn" class="primary">Найти</button></div>
+        </div>
+        <div id="vacancyMeta" class="muted"></div>
+        <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th></th><th>Код</th><th>Название</th><th>Работодатель</th><th>Статус</th>
+              <th class="num">Вилка</th><th>Приоритет</th><th>Теги</th>
+            </tr>
+          </thead>
+          <tbody id="vacancyRows"></tbody>
+        </table>
+        </div>
+        <div class="pager">
+          <button id="prevPage">Назад</button>
+          <span id="pageLabel" class="muted"></span>
+          <button id="nextPage">Дальше</button>
+        </div>
+      </div>
+
+      <div class="card hidden" id="editCard">
+        <h2 id="editTitle">Вакансия</h2>
+        <form id="vacancyForm" class="form-grid">
+          <div class="span-2"><label for="vTitle">Название</label><input id="vTitle" required minlength="3"/></div>
+          <div><label for="vEmployer">Работодатель</label><select id="vEmployer" required></select></div>
+          <div><label for="vStatus">Статус</label>
+            <select id="vStatus">
+              <option value="DRAFT">Черновик</option>
+              <option value="OPEN">Открыта</option>
+              <option value="PAUSED">Пауза</option>
+              <option value="CLOSED">Закрыта</option>
+            </select>
+          </div>
+          <div><label for="vSalaryMin">Зарплата от</label><input id="vSalaryMin" type="number" min="0"/></div>
+          <div><label for="vSalaryMax">Зарплата до</label><input id="vSalaryMax" type="number" min="0"/></div>
+          <div><label for="vRemote">Формат</label>
+            <select id="vRemote"><option value="false">Офис</option><option value="true">Удалённо</option></select>
+          </div>
+          <div class="span-3"><label for="vDescription">Описание</label><textarea id="vDescription" rows="3"></textarea></div>
+          <div class="span-3"><label for="vTags">Теги через запятую</label><input id="vTags" placeholder="java, spring"/></div>
+        </form>
+        <div class="toolbar">
+          <button id="saveVacancyBtn" class="primary editor-only hidden">Сохранить</button>
+          <button class="editor-only hidden" id="archiveVacancyBtn">В архив</button>
+          <button class="editor-only hidden" id="restoreVacancyBtn">Восстановить</button>
+          <button class="danger admin-only hidden" id="deleteVacancyBtn">Удалить навсегда</button>
+        </div>
+        <div id="vacancyError" class="error"></div>
+        <h3>Заметки</h3>
+        <div id="notesList"></div>
+        <form id="noteForm" class="toolbar editor-only hidden">
+          <input id="noteContent" placeholder="Заметка рекрутера" style="flex:1;min-width:240px"/>
+          <label class="check"><input id="notePinned" type="checkbox"/> Закрепить</label>
+          <button type="submit" class="primary">Добавить</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="view-analytics" class="hidden">
+      <h1>Аналитика</h1>
+      <div id="analyticsCards" class="stats"></div>
+      <div class="split">
+        <div class="card">
+          <h2>По работодателям</h2>
+          <div id="byEmployer"></div>
+        </div>
+        <div>
+          <div class="card"><h2>По статусам</h2><div id="byStatus"></div></div>
+          <div class="card"><h2>По приоритету</h2><div id="byPriority"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-users" class="hidden">
+      <div class="card">
+        <h1>Пользователи</h1>
+        <form id="createUserForm" class="toolbar">
+          <input id="uEmail" type="email" placeholder="email" required style="width:240px"/>
+          <input id="uName" placeholder="Имя" required style="width:200px"/>
+          <select id="uRole" style="width:140px"><option value="VIEWER">Просмотр</option><option value="EDITOR">Редактор</option><option value="ADMIN">Админ</option></select>
+          <button type="submit" class="primary">Создать</button>
+        </form>
+        <div id="tempPassword" class="muted"></div>
+        <table>
+          <thead><tr><th>Email</th><th>Имя</th><th>Роль</th><th>Активен</th><th></th></tr></thead>
+          <tbody id="userRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="view-audit" class="hidden">
+      <div class="card">
+        <h1>Журнал аудита</h1>
+        <div class="toolbar">
+          <input id="auditQ" placeholder="Событие или текст" style="width:280px"/>
+          <button id="auditSearchBtn" class="primary">Найти</button>
+        </div>
+        <table>
+          <thead><tr><th>Время</th><th>Пользователь</th><th>Событие</th><th>Описание</th></tr></thead>
+          <tbody id="auditRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

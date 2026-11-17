@@ -28,6 +28,9 @@ replay_pid*
 *.iml
 *.iws
 
+# Secrets
+backend/.env
+
 # Maven
 target/
 pom.xml.tag
