@@ -45,14 +45,19 @@ public class AnalyticsService {
                 .map(row -> new NamedCount(String.valueOf(row[0]), ((Number) row[1]).longValue()))
                 .toList();
 
+        // priority вычисляется (не колонка БД) — группировка через калькулятор Дамира
         Map<Priority, Long> priorityCounts = new EnumMap<>(Priority.class);
-        for (Priority p : Priority.values()) priorityCounts.put(p, 0L);
+        for (Priority p : Priority.values()) {
+            priorityCounts.put(p, 0L);
+        }
         for (Vacancy vacancy : vacancies.findAll()) {
             Priority p = priorityCalculator.calculate(vacancy.getSalaryMin(), vacancy.getCreatedAt());
             priorityCounts.merge(p, 1L, Long::sum);
         }
         List<NamedCount> byPriority = new ArrayList<>();
-        priorityCounts.forEach((k, v) -> byPriority.add(new NamedCount(k.name(), v)));
+        for (Priority p : Priority.values()) {
+            byPriority.add(new NamedCount(p.name(), priorityCounts.get(p)));
+        }
 
         return new AnalyticsResponse(total, active, archived, remote, avg, byEmployer, byStatus, byPriority);
     }

@@ -15,8 +15,11 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Long>, JpaSpec
     Optional<Vacancy> findByCodeIgnoreCase(String code);
     boolean existsByCodeIgnoreCase(String code);
 
+    /** Аналитика (блок 9): агрегаты для GET /api/analytics/summary. */
     long countByArchivedAtIsNull();
+
     long countByArchivedAtIsNotNull();
+
     long countByRemoteTrue();
 
     @Query("select avg(v.salaryMin) from Vacancy v where v.salaryMin is not null")
