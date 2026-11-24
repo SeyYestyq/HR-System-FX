@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Редактирование — Найм</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+<header id="topbar"></header>
+<main class="container">
+  <div class="page-head">
+    <h1 id="pageTitle">Новая вакансия</h1>
+    <div class="toolbar">
+      <a href="/vacancies.html" class="secondary" style="display:inline-flex;align-items:center">Отмена</a>
+      <button type="button" class="primary" id="saveBtn">Сохранить</button>
+    </div>
+  </div>
+
+  <div id="conflictBanner" class="bulk-panel hidden">
+    <strong>Конфликт версий</strong>
+    <span>Запись изменил другой пользователь.</span>
+    <button type="button" class="primary" id="conflictReload">Обновить и перечитать</button>
+  </div>
+
+  <div class="card">
+    <form id="vacancyForm" class="form-grid" novalidate>
+      <div class="span-2 field">
+        <label for="vTitle">Название</label>
+        <input id="vTitle" required minlength="3" maxlength="150"/>
+      </div>
+      <div class="field">
+        <label for="vEmployer">Работодатель</label>
+        <select id="vEmployer" required></select>
+      </div>
+      <div class="field">
+        <label for="vStatus">Статус</label>
+        <select id="vStatus">
+          <option value="DRAFT">Черновик</option>
+          <option value="OPEN">Открыта</option>
+          <option value="PAUSED">Пауза</option>
+          <option value="CLOSED">Закрыта</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="vSalaryMin">Зарплата от</label>
+        <input id="vSalaryMin" type="number" min="0" step="1"/>
+      </div>
+      <div class="field">
+        <label for="vSalaryMax">Зарплата до</label>
+        <input id="vSalaryMax" type="number" min="0" step="1"/>
+      </div>
+      <div class="field">
+        <label for="vRemote">Формат</label>
+        <select id="vRemote"><option value="false">Офис</option><option value="true">Удалённо</option></select>
+      </div>
+      <div class="span-3 field">
+        <label for="vDescription">Описание</label>
+        <textarea id="vDescription" rows="4" maxlength="10000"></textarea>
+      </div>
+      <div class="span-3 field">
+        <label>Теги</label>
+        <div id="tagEditor"></div>
+      </div>
+    </form>
+    <div id="formError" class="error"></div>
+  </div>
+</main>
+
+<script src="/api.js"></script>
+<script src="/app.js"></script>
+<script>
+'use strict';
+
+const params = new URLSearchParams(location.search);
+const uuid = params.get('uuid');
+let vacancy = null;
+let tagEditor = null;
+let validateAll = () => true;
+
+async function boot() {
+  const user = await Api.ensureAuth();
+  if (!user) return;
+  if (!Api.canEdit()) {
+    location.href = '/vacancies.html';
+    return;
+  }
+  App.renderNav('vacancies');
+  tagEditor = App.createTagEditor(document.getElementById('tagEditor'), []);
+  await loadEmployers();
+  setupValidation();
+  if (uuid) await loadVacancy();
+}
+
+async function loadEmployers() {
+  const list = await Api.request('GET', '/api/employers?onlyEnabled=true');
+  document.getElementById('vEmployer').innerHTML =
+    list.map(e => `<option value="${e.uuid}">${App.escapeHtml(e.name)}</option>`).join('')
+    || '<option value="">Нет работодателей</option>';
+}
+
+function setupValidation() {
+  const titleRun = App.bindLiveValidation(document.getElementById('vTitle'), App.validateTitle);
+  const salaryHint = (() => {
+    const wrap = document.getElementById('vSalaryMax').closest('.field');
+    let hint = wrap.querySelector('.field-hint');
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.className = 'field-hint';
+      wrap.appendChild(hint);
+    }
+    const run = () => {
+      const result = App.validateSalary(document.getElementById('vSalaryMin'), document.getElementById('vSalaryMax'));
+      const ok = result === true;
+      document.getElementById('vSalaryMin').classList.toggle('is-invalid', !ok);
+      document.getElementById('vSalaryMax').classList.toggle('is-invalid', !ok);
+      hint.textContent = ok ? '' : result;
+      return ok;
+    };
+    document.getElementById('vSalaryMin').addEventListener('input', run);
+    document.getElementById('vSalaryMax').addEventListener('input', run);
+    return run;
+  })();
+  validateAll = () => {
+    titleRun();
+    const titleOk = App.validateTitle(document.getElementById('vTitle').value) === true;
+    const salaryOk = salaryHint();
+    const employerOk = !!document.getElementById('vEmployer').value;
+    if (!employerOk) document.getElementById('formError').textContent = 'Выберите работодателя';
+    return titleOk && salaryOk && employerOk;
+  };
+}
+
+async function loadVacancy() {
+  vacancy = await Api.request('GET', `/api/vacancies/${uuid}`);
+  document.getElementById('pageTitle').textContent = `Изменение · ${vacancy.code}`;
+  document.getElementById('vTitle').value = vacancy.title;
+  document.getElementById('vEmployer').value = vacancy.employerUuid;
+  document.getElementById('vStatus').value = vacancy.status;
+  document.getElementById('vSalaryMin').value = vacancy.salaryMin ?? '';
+  document.getElementById('vSalaryMax').value = vacancy.salaryMax ?? '';
+  document.getElementById('vRemote').value = String(vacancy.remote);
+  document.getElementById('vDescription').value = vacancy.description || '';
+  tagEditor.set(vacancy.tags || []);
+}
+
+function bodyFromForm() {
+  return {
+    title: document.getElementById('vTitle').value.trim(),
+    description: document.getElementById('vDescription').value,
+    employerUuid: document.getElementById('vEmployer').value,
+    status: document.getElementById('vStatus').value,
+    salaryMin: document.getElementById('vSalaryMin').value === '' ? null : Number(document.getElementById('vSalaryMin').value),
+    salaryMax: document.getElementById('vSalaryMax').value === '' ? null : Number(document.getElementById('vSalaryMax').value),
+    remote: document.getElementById('vRemote').value === 'true',
+    tags: tagEditor.values(),
+    version: vacancy ? vacancy.version : null
+  };
+}
+
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const err = document.getElementById('formError');
+  err.textContent = '';
+  document.getElementById('conflictBanner').classList.add('hidden');
+  if (!validateAll()) return;
+  const body = bodyFromForm();
+  try {
+    if (vacancy) {
+      const updated = await Api.request('PUT', `/api/vacancies/${uuid}`, body);
+      location.href = `/vacancy.html?uuid=${encodeURIComponent(updated.uuid)}`;
+    } else {
+      const created = await Api.request('POST', '/api/vacancies', body);
+      location.href = `/vacancy.html?uuid=${encodeURIComponent(created.uuid)}`;
+    }
+  } catch (e) {
+    if (e.conflict) {
+      document.getElementById('conflictBanner').classList.remove('hidden');
+    }
+    App.handleApiError(e, err);
+  }
+});
+
+document.getElementById('conflictReload').addEventListener('click', async () => {
+  await loadVacancy();
+  document.getElementById('conflictBanner').classList.add('hidden');
+  App.showToast('Данные перечитаны');
+});
+
+boot();
+</script>
+</body>
+</html>

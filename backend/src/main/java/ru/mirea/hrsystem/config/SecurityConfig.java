@@ -44,9 +44,10 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/index.html", "/app.js", "/styles.css", "/favicon.svg",
-                                "/vacancies.html", "/vacancy.html", "/edit.html", "/analytics.html",
-                                "/admin-users.html", "/admin-audit.html", "/errors/**").permitAll()
+                        .requestMatchers("/", "/index.html", "/api.js", "/app.js", "/style.css", "/styles.css",
+                                "/favicon.svg", "/vacancies.html", "/vacancy.html", "/edit.html",
+                                "/analytics.html", "/admin-users.html", "/admin-audit.html", "/errors/**")
+                        .permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").hasRole("ADMIN")
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()

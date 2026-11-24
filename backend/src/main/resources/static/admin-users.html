@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Пользователи — Найм</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+<header id="topbar"></header>
+<main class="container">
+  <div class="page-head">
+    <h1>Пользователи</h1>
+  </div>
+
+  <div class="card">
+    <h2>Создать</h2>
+    <form id="createUserForm" class="toolbar">
+      <input id="uEmail" type="email" placeholder="email" required style="width:240px"/>
+      <input id="uName" placeholder="Имя" required style="width:200px"/>
+      <select id="uRole" style="width:140px">
+        <option value="VIEWER">Просмотр</option>
+        <option value="EDITOR">Редактор</option>
+        <option value="ADMIN">Админ</option>
+      </select>
+      <button type="submit" class="primary">Создать</button>
+    </form>
+    <div id="tempPassword" class="ok"></div>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th><th>Имя</th><th>Роль</th><th>Активен</th><th>Действия</th>
+          </tr>
+        </thead>
+        <tbody id="userRows"></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <button type="button" id="prevPage">Назад</button>
+      <span id="pageLabel" class="muted"></span>
+      <button type="button" id="nextPage">Дальше</button>
+    </div>
+    <div id="usersError" class="error"></div>
+  </div>
+</main>
+
+<div id="editModal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h2>Изменить пользователя</h2>
+    <form id="editUserForm">
+      <input type="hidden" id="eUuid"/>
+      <div class="field"><label for="eEmail">Email / логин</label><input id="eEmail" type="email" required/></div>
+      <div class="field"><label for="eName">Имя</label><input id="eName" required/></div>
+      <div class="field"><label for="eRole">Роль</label>
+        <select id="eRole">
+          <option value="VIEWER">Просмотр</option>
+          <option value="EDITOR">Редактор</option>
+          <option value="ADMIN">Админ</option>
+        </select>
+      </div>
+      <label class="check"><input id="eEnabled" type="checkbox"/> Активен</label>
+      <div class="toolbar">
+        <button type="submit" class="primary">Сохранить</button>
+        <button type="button" id="editCancel">Отмена</button>
+      </div>
+      <div id="editError" class="error"></div>
+    </form>
+  </div>
+</div>
+
+<script src="/api.js"></script>
+<script src="/app.js"></script>
+<script>
+'use strict';
+
+const state = { page: 0, size: 20, totalPages: 0 };
+
+async function boot() {
+  const user = await Api.ensureAuth({ requireAdmin: true });
+  if (!user) return;
+  App.renderNav('users');
+  await loadUsers();
+}
+
+async function loadUsers() {
+  const err = document.getElementById('usersError');
+  err.textContent = '';
+  try {
+    const data = await Api.request('GET', `/api/admin/users?page=${state.page}&size=${state.size}&sort=createdAt,desc`);
+    state.totalPages = data.totalPages;
+    document.getElementById('pageLabel').textContent = `Стр. ${data.page + 1} / ${Math.max(data.totalPages, 1)} · всего ${data.totalElements}`;
+    document.getElementById('userRows').innerHTML = data.content.map(u => `
+      <tr>
+        <td>${App.escapeHtml(u.email)}</td>
+        <td>${App.escapeHtml(u.fullName)}</td>
+        <td>${App.ROLE_LABEL[u.role] || App.escapeHtml(u.role)}</td>
+        <td>${u.enabled ? 'Да' : 'Нет'}</td>
+        <td class="toolbar" style="margin:0">
+          <button type="button" data-edit='${JSON.stringify(u).replace(/'/g, '&#39;')}'>Изменить</button>
+          <button type="button" data-reset="${u.uuid}">Сброс пароля</button>
+        </td>
+      </tr>`).join('');
+
+    document.querySelectorAll('[data-reset]').forEach(btn => btn.addEventListener('click', async () => {
+      try {
+        const res = await Api.request('POST', `/api/admin/users/${btn.dataset.reset}/reset-password`);
+        document.getElementById('tempPassword').textContent =
+          `Временный пароль (показывается один раз): ${res.temporaryPassword}`;
+      } catch (e) {
+        App.handleApiError(e, err);
+      }
+    }));
+
+    document.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => {
+      const u = JSON.parse(btn.getAttribute('data-edit'));
+      document.getElementById('eUuid').value = u.uuid;
+      document.getElementById('eEmail').value = u.email;
+      document.getElementById('eName').value = u.fullName;
+      document.getElementById('eRole').value = u.role;
+      document.getElementById('eEnabled').checked = u.enabled;
+      document.getElementById('editModal').classList.remove('hidden');
+    }));
+  } catch (e) {
+    App.handleApiError(e, err);
+  }
+}
+
+document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const res = await Api.request('POST', '/api/admin/users', {
+      email: document.getElementById('uEmail').value.trim(),
+      fullName: document.getElementById('uName').value.trim(),
+      role: document.getElementById('uRole').value
+    });
+    document.getElementById('tempPassword').textContent =
+      `Создан. Временный пароль (один раз): ${res.temporaryPassword}`;
+    e.target.reset();
+    await loadUsers();
+  } catch (err) {
+    App.handleApiError(err, document.getElementById('usersError'));
+  }
+});
+
+document.getElementById('editCancel').addEventListener('click', () => {
+  document.getElementById('editModal').classList.add('hidden');
+});
+
+document.getElementById('editUserForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const uuid = document.getElementById('eUuid').value;
+  try {
+    await Api.request('PUT', `/api/admin/users/${uuid}`, {
+      email: document.getElementById('eEmail').value.trim(),
+      fullName: document.getElementById('eName').value.trim(),
+      role: document.getElementById('eRole').value,
+      enabled: document.getElementById('eEnabled').checked
+    });
+    document.getElementById('editModal').classList.add('hidden');
+    App.showToast('Пользователь обновлён');
+    await loadUsers();
+  } catch (err) {
+    App.handleApiError(err, document.getElementById('editError'));
+  }
+});
+
+document.getElementById('prevPage').addEventListener('click', async () => {
+  if (state.page > 0) { state.page--; await loadUsers(); }
+});
+document.getElementById('nextPage').addEventListener('click', async () => {
+  if (state.page + 1 < state.totalPages) { state.page++; await loadUsers(); }
+});
+
+boot();
+</script>
+</body>
+</html>

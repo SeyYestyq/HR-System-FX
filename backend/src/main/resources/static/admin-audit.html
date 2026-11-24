@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Аудит — Найм</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+<header id="topbar"></header>
+<main class="container">
+  <div class="page-head">
+    <h1>Журнал аудита</h1>
+  </div>
+  <div class="card">
+    <div class="toolbar">
+      <input id="auditQ" placeholder="Событие, email, описание" style="width:280px"/>
+      <button type="button" id="auditSearchBtn" class="primary">Найти</button>
+      <select id="auditSort">
+        <option value="createdAt,desc">Сначала новые</option>
+        <option value="createdAt,asc">Сначала старые</option>
+        <option value="eventType,asc">По событию</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Время</th>
+            <th>Пользователь</th>
+            <th>Событие</th>
+            <th>Сущность</th>
+            <th>Описание</th>
+          </tr>
+        </thead>
+        <tbody id="auditRows"></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <button type="button" id="prevPage">Назад</button>
+      <span id="pageLabel" class="muted"></span>
+      <button type="button" id="nextPage">Дальше</button>
+      <select id="pageSize"><option>20</option><option>50</option><option>100</option></select>
+    </div>
+    <div id="auditError" class="error"></div>
+  </div>
+</main>
+
+<script src="/api.js"></script>
+<script src="/app.js"></script>
+<script>
+'use strict';
+
+const state = { page: 0, size: 20, totalPages: 0 };
+
+async function boot() {
+  const user = await Api.ensureAuth({ requireAdmin: true });
+  if (!user) return;
+  App.renderNav('audit');
+  await loadAudit();
+}
+
+async function loadAudit() {
+  const err = document.getElementById('auditError');
+  err.textContent = '';
+  try {
+    const q = document.getElementById('auditQ').value.trim();
+    const sort = document.getElementById('auditSort').value;
+    const data = await Api.request('GET',
+      `/api/admin/audit?q=${encodeURIComponent(q)}&page=${state.page}&size=${state.size}&sort=${encodeURIComponent(sort)}`);
+    state.totalPages = data.totalPages;
+    document.getElementById('pageLabel').textContent =
+      `Стр. ${data.page + 1} / ${Math.max(data.totalPages, 1)} · всего ${data.totalElements}`;
+    document.getElementById('auditRows').innerHTML = data.content.map(a => `
+      <tr>
+        <td class="mono">${App.when(a.createdAt)}</td>
+        <td>${App.escapeHtml(a.actorEmail || '—')}</td>
+        <td>${App.escapeHtml(a.eventType)}</td>
+        <td class="mono">${App.escapeHtml((a.entityType || '') + (a.entityUuid ? ' · ' + a.entityUuid : ''))}</td>
+        <td>${App.escapeHtml(a.description || '')}</td>
+      </tr>`).join('') || '<tr><td colspan="5" class="muted">Записей нет</td></tr>';
+  } catch (e) {
+    App.handleApiError(e, err);
+  }
+}
+
+document.getElementById('auditSearchBtn').addEventListener('click', async () => {
+  state.page = 0;
+  await loadAudit();
+});
+document.getElementById('auditSort').addEventListener('change', async () => {
+  state.page = 0;
+  await loadAudit();
+});
+document.getElementById('pageSize').addEventListener('change', async (e) => {
+  state.size = Number(e.target.value);
+  state.page = 0;
+  await loadAudit();
+});
+document.getElementById('prevPage').addEventListener('click', async () => {
+  if (state.page > 0) { state.page--; await loadAudit(); }
+});
+document.getElementById('nextPage').addEventListener('click', async () => {
+  if (state.page + 1 < state.totalPages) { state.page++; await loadAudit(); }
+});
+
+boot();
+</script>
+</body>
+</html>

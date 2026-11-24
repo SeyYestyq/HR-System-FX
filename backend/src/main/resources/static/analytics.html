@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Аналитика — Найм</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+<header id="topbar"></header>
+<main class="container">
+  <div class="page-head">
+    <h1>Аналитика</h1>
+    <button type="button" class="secondary" id="reloadBtn">Обновить</button>
+  </div>
+  <div id="analyticsCards" class="stats"></div>
+  <div class="split">
+    <div class="card">
+      <h2>По работодателям</h2>
+      <div id="byEmployer"></div>
+    </div>
+    <div>
+      <div class="card"><h2>По статусам</h2><div id="byStatus"></div></div>
+      <div class="card"><h2>По приоритету</h2><div id="byPriority"></div></div>
+    </div>
+  </div>
+  <div id="analyticsError" class="error"></div>
+</main>
+
+<script src="/api.js"></script>
+<script src="/app.js"></script>
+<script>
+'use strict';
+
+async function boot() {
+  const user = await Api.ensureAuth();
+  if (!user) return;
+  App.renderNav('analytics');
+  await loadAnalytics();
+}
+
+async function loadAnalytics() {
+  const err = document.getElementById('analyticsError');
+  err.textContent = '';
+  try {
+    const data = await Api.request('GET', '/api/analytics/summary');
+    const figures = [
+      ['Всего', data.total, false],
+      ['Активные', data.active, false],
+      ['Архивные', data.archived, false],
+      ['Удалённо', data.remoteCount, false],
+      ['Средняя зарплата', App.money(data.averageSalaryMin), true]
+    ];
+    document.getElementById('analyticsCards').innerHTML = figures.map(([label, value, accent]) => `
+      <div class="stat">
+        <div class="label">${label}</div>
+        <div class="metric${accent ? ' accent' : ''}">${value}</div>
+      </div>`).join('');
+
+    const employers = data.byEmployer || [];
+    const maxEmployer = Math.max(1, ...employers.map(r => r.count));
+    const lead = employers.reduce((best, row) => row.count > (best?.count || 0) ? row : best, null);
+    document.getElementById('byEmployer').innerHTML = employers.map(r => `
+      <div class="bar-row">
+        <div>
+          <div>${App.escapeHtml(r.name)}</div>
+          <div class="bar-track"><div class="bar-fill${lead && r.name === lead.name ? ' lead' : ''}" style="width:${Math.round(r.count / maxEmployer * 100)}%"></div></div>
+        </div>
+        <span class="count">${r.count}</span>
+      </div>`).join('') || '<div class="muted">Нет данных</div>';
+
+    const quiet = (rows, labels) => (rows || []).map(r => `
+      <div class="quiet-row"><span>${App.escapeHtml(labels[r.name] || r.name)}</span><span class="count">${r.count}</span></div>`
+    ).join('') || '<div class="muted">Нет данных</div>';
+    document.getElementById('byStatus').innerHTML = quiet(data.byStatus, App.STATUS_LABEL);
+    document.getElementById('byPriority').innerHTML = quiet(data.byPriority, App.PRIORITY_LABEL);
+  } catch (e) {
+    App.handleApiError(e, err);
+  }
+}
+
+document.getElementById('reloadBtn').addEventListener('click', loadAnalytics);
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Карточка вакансии — Найм</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+<header id="topbar"></header>
+<main class="container">
+  <div class="page-head">
+    <h1 id="pageTitle">Вакансия</h1>
+    <div class="toolbar">
+      <a href="/vacancies.html" class="secondary" style="display:inline-flex;align-items:center">К списку</a>
+      <a id="editLink" class="primary editor-only hidden" href="#" style="display:inline-flex;align-items:center">Изменить</a>
+      <button type="button" class="editor-only hidden" id="archiveBtn">В архив</button>
+      <button type="button" class="editor-only hidden" id="restoreBtn">Восстановить</button>
+      <button type="button" class="danger admin-only hidden" id="permanentBtn">Удалить навсегда</button>
+      <button type="button" class="secondary" id="reloadBtn">Обновить</button>
+    </div>
+  </div>
+
+  <div id="conflictBanner" class="bulk-panel hidden">
+    <strong>Конфликт версий</strong>
+    <span>Запись изменил другой пользователь.</span>
+    <button type="button" class="primary" id="conflictReload">Обновить и перечитать</button>
+  </div>
+
+  <div class="card">
+    <div class="detail-grid" id="details"></div>
+    <div id="tags"></div>
+    <div id="cardError" class="error"></div>
+  </div>
+
+  <div class="card">
+    <h2>Заметки</h2>
+    <div id="notesList"></div>
+    <form id="noteForm" class="toolbar editor-only hidden">
+      <input id="noteContent" placeholder="Заметка рекрутера" style="flex:1;min-width:240px" required/>
+      <label class="check"><input id="notePinned" type="checkbox"/> Закрепить</label>
+      <button type="submit" class="primary">Добавить</button>
+    </form>
+  </div>
+</main>
+
+<script src="/api.js"></script>
+<script src="/app.js"></script>
+<script>
+'use strict';
+
+const params = new URLSearchParams(location.search);
+const uuid = params.get('uuid');
+let vacancy = null;
+
+async function boot() {
+  if (!uuid) {
+    location.href = '/vacancies.html';
+    return;
+  }
+  const user = await Api.ensureAuth();
+  if (!user) return;
+  App.renderNav('vacancies');
+  document.getElementById('editLink').href = `/edit.html?uuid=${encodeURIComponent(uuid)}`;
+  await loadAll();
+}
+
+async function loadAll() {
+  document.getElementById('conflictBanner').classList.add('hidden');
+  document.getElementById('cardError').textContent = '';
+  try {
+    vacancy = await Api.request('GET', `/api/vacancies/${uuid}`);
+    renderVacancy();
+    await loadNotes();
+  } catch (err) {
+    App.handleApiError(err, document.getElementById('cardError'));
+  }
+}
+
+function renderVacancy() {
+  const v = vacancy;
+  document.getElementById('pageTitle').textContent = `${v.code} · ${v.title}`;
+  document.getElementById('details').innerHTML = `
+    <div><div class="label">Код</div><div class="value mono">${App.escapeHtml(v.code)}</div></div>
+    <div><div class="label">Статус</div><div class="value">${App.STATUS_LABEL[v.status] || App.escapeHtml(v.status)}</div></div>
+    <div><div class="label">Работодатель</div><div class="value">${App.escapeHtml(v.employerName)}</div></div>
+    <div><div class="label">Приоритет</div><div class="value"><span class="stamp ${String(v.priority).toLowerCase()}">${App.PRIORITY_LABEL[v.priority] || ''}</span></div></div>
+    <div><div class="label">Зарплата</div><div class="value mono">${App.moneyRange(v.salaryMin, v.salaryMax)}</div></div>
+    <div><div class="label">Удалёнка</div><div class="value">${v.remote ? 'Да' : 'Нет'}</div></div>
+    <div><div class="label">Архив</div><div class="value">${v.archived ? 'Да · ' + App.when(v.archivedAt) : 'Нет'}</div></div>
+    <div><div class="label">Версия</div><div class="value mono">${v.version}</div></div>
+    <div><div class="label">Создано</div><div class="value mono">${App.when(v.createdAt)}</div></div>
+    <div><div class="label">Обновлено</div><div class="value mono">${App.when(v.updatedAt)}</div></div>
+    <div class="span-2" style="grid-column:1/-1"><div class="label">Описание</div><div class="value">${App.escapeHtml(v.description || '—')}</div></div>
+  `;
+  document.getElementById('tags').innerHTML = [...(v.tags || [])]
+    .map(t => `<span class="tag">${App.escapeHtml(t)}</span>`).join('') || '<span class="muted">Без тегов</span>';
+  document.getElementById('archiveBtn').classList.toggle('hidden', v.archived || !Api.canEdit());
+  document.getElementById('restoreBtn').classList.toggle('hidden', !v.archived || !Api.canEdit());
+}
+
+async function loadNotes() {
+  const notes = await Api.request('GET', `/api/vacancies/${uuid}/notes`);
+  const sorted = [...notes].sort((a, b) => Number(b.pinned) - Number(a.pinned));
+  document.getElementById('notesList').innerHTML = sorted.map(n => `
+    <div class="note" data-note="${n.uuid}">
+      <div class="note-head">
+        <strong>${App.escapeHtml(n.authorName)}</strong>
+        ${n.pinned ? '<span class="pin">Закреплена</span>' : ''}
+        <span class="muted">${App.when(n.createdAt)}</span>
+        <div class="note-actions editor-only ${Api.canEdit() ? '' : 'hidden'}">
+          <button type="button" data-pin="${n.uuid}" data-pinned="${n.pinned}" data-content="${App.escapeHtml(n.content)}" data-version="${n.version}">${n.pinned ? 'Открепить' : 'Закрепить'}</button>
+          <button type="button" data-edit="${n.uuid}" data-content="${App.escapeHtml(n.content)}" data-pinned="${n.pinned}" data-version="${n.version}">Изменить</button>
+          <button type="button" class="danger" data-del="${n.uuid}">Удалить</button>
+        </div>
+      </div>
+      <div>${App.escapeHtml(n.content)}</div>
+    </div>`).join('') || '<div class="muted">Заметок нет</div>';
+
+  document.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', async () => {
+    if (!confirm('Удалить заметку?')) return;
+    try {
+      await Api.request('DELETE', `/api/vacancies/${uuid}/notes/${btn.dataset.del}`);
+      await loadNotes();
+    } catch (err) {
+      if (err.conflict) showConflict();
+      App.handleApiError(err, document.getElementById('cardError'));
+    }
+  }));
+
+  document.querySelectorAll('[data-pin]').forEach(btn => btn.addEventListener('click', async () => {
+    try {
+      await Api.request('PUT', `/api/vacancies/${uuid}/notes/${btn.dataset.pin}`, {
+        content: btn.dataset.content,
+        pinned: btn.dataset.pinned !== 'true',
+        version: Number(btn.dataset.version)
+      });
+      await loadNotes();
+    } catch (err) {
+      if (err.conflict) showConflict();
+      App.handleApiError(err, document.getElementById('cardError'));
+    }
+  }));
+
+  document.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', async () => {
+    const next = prompt('Текст заметки', btn.dataset.content);
+    if (next == null) return;
+    try {
+      await Api.request('PUT', `/api/vacancies/${uuid}/notes/${btn.dataset.edit}`, {
+        content: next,
+        pinned: btn.dataset.pinned === 'true',
+        version: Number(btn.dataset.version)
+      });
+      await loadNotes();
+    } catch (err) {
+      if (err.conflict) showConflict();
+      App.handleApiError(err, document.getElementById('cardError'));
+    }
+  }));
+}
+
+function showConflict() {
+  document.getElementById('conflictBanner').classList.remove('hidden');
+}
+
+document.getElementById('noteForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await Api.request('POST', `/api/vacancies/${uuid}/notes`, {
+      content: document.getElementById('noteContent').value,
+      pinned: document.getElementById('notePinned').checked
+    });
+    document.getElementById('noteContent').value = '';
+    document.getElementById('notePinned').checked = false;
+    await loadNotes();
+  } catch (err) {
+    if (err.conflict) showConflict();
+    App.handleApiError(err, document.getElementById('cardError'));
+  }
+});
+
+document.getElementById('archiveBtn').addEventListener('click', async () => {
+  try {
+    vacancy = await Api.request('DELETE', `/api/vacancies/${uuid}`);
+    renderVacancy();
+    App.showToast('Вакансия в архиве');
+  } catch (err) {
+    if (err.conflict) showConflict();
+    App.handleApiError(err, document.getElementById('cardError'));
+  }
+});
+
+document.getElementById('restoreBtn').addEventListener('click', async () => {
+  try {
+    vacancy = await Api.request('POST', `/api/vacancies/${uuid}/restore`);
+    renderVacancy();
+    App.showToast('Вакансия восстановлена');
+  } catch (err) {
+    if (err.conflict) showConflict();
+    App.handleApiError(err, document.getElementById('cardError'));
+  }
+});
+
+document.getElementById('permanentBtn').addEventListener('click', async () => {
+  if (!confirm('Безвозвратно удалить вакансию?')) return;
+  try {
+    await Api.request('DELETE', `/api/vacancies/${uuid}/permanent`, null, {
+      headers: { 'X-Confirm-Delete': 'PERMANENTLY_DELETE' }
+    });
+    location.href = '/vacancies.html';
+  } catch (err) {
+    App.handleApiError(err, document.getElementById('cardError'));
+  }
+});
+
+document.getElementById('reloadBtn').addEventListener('click', loadAll);
+document.getElementById('conflictReload').addEventListener('click', loadAll);
+
+boot();
+</script>
+</body>
+</html>

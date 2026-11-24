@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Вакансии — Найм</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+<header id="topbar"></header>
+<main class="container">
+  <div class="page-head">
+    <h1>Вакансии</h1>
+    <div class="toolbar">
+      <a class="primary editor-only hidden" href="/edit.html" style="display:inline-flex;align-items:center">Создать</a>
+      <button type="button" class="editor-only hidden" id="editSelectedBtn" disabled>Изменить</button>
+      <button type="button" class="editor-only hidden" id="archiveSelectedBtn" disabled>Архив</button>
+      <button type="button" class="editor-only hidden" id="restoreSelectedBtn" disabled>Восстановить</button>
+      <button type="button" id="exportBtn">Экспорт CSV</button>
+      <label class="file editor-only hidden">Импорт CSV <input id="importFile" type="file" accept=".csv,text/csv"/></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="filters">
+      <div><label for="fQ">Поиск</label><input id="fQ" placeholder="Название, код, описание"/></div>
+      <div><label for="fEmployer">Работодатель</label><select id="fEmployer"><option value="">Все</option></select></div>
+      <div><label for="fStatus">Статус</label>
+        <select id="fStatus">
+          <option value="">Все</option>
+          <option value="DRAFT">Черновик</option>
+          <option value="OPEN">Открыта</option>
+          <option value="PAUSED">Пауза</option>
+          <option value="CLOSED">Закрыта</option>
+        </select>
+      </div>
+      <div><label for="fRemote">Удалёнка</label>
+        <select id="fRemote"><option value="">Все</option><option value="true">Да</option><option value="false">Нет</option></select>
+      </div>
+      <div><label for="fPriority">Приоритет</label>
+        <select id="fPriority"><option value="">Все</option><option value="HIGH">Высокий</option><option value="MEDIUM">Средний</option><option value="LOW">Низкий</option></select>
+      </div>
+      <div><label for="fTag">Тег</label><input id="fTag" placeholder="java"/></div>
+      <div><label for="fArchived">Архив</label>
+        <select id="fArchived"><option value="false">Активные</option><option value="true">Архивные</option><option value="">Все</option></select>
+      </div>
+      <div><label for="fSalaryFrom">Зарплата от</label><input id="fSalaryFrom" type="number" min="0"/></div>
+      <div><label for="fSalaryTo">Зарплата до</label><input id="fSalaryTo" type="number" min="0"/></div>
+      <div class="filter-actions">
+        <button type="button" id="searchBtn" class="primary">Найти</button>
+        <button type="button" id="resetBtn" class="secondary">Сброс</button>
+      </div>
+    </div>
+
+    <div class="bulk-panel editor-only hidden" id="bulkPanel">
+      <strong>Массовые операции</strong>
+      <button type="button" id="bulkArchive">Архивировать</button>
+      <button type="button" id="bulkRestore">Восстановить</button>
+      <select id="bulkStatus">
+        <option value="">Статус…</option>
+        <option value="DRAFT">Черновик</option>
+        <option value="OPEN">Открыта</option>
+        <option value="PAUSED">Пауза</option>
+        <option value="CLOSED">Закрыта</option>
+      </select>
+      <button type="button" id="bulkStatusBtn">Сменить статус</button>
+      <input id="bulkTag" placeholder="тег" style="width:120px"/>
+      <button type="button" id="bulkAddTag">Добавить тег</button>
+      <button type="button" id="bulkRemoveTag">Удалить тег</button>
+      <span class="muted" id="selectedCount">Выбрано: 0</span>
+    </div>
+
+    <div id="vacancyMeta" class="muted"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="selectAll" title="Выбрать все на странице"/></th>
+            <th>Код</th>
+            <th class="sortable" data-sort="title">Название <span class="sort-mark"></span></th>
+            <th>Работодатель</th>
+            <th>Статус</th>
+            <th class="num sortable" data-sort="salaryMax">Вилка <span class="sort-mark"></span></th>
+            <th>Теги</th>
+            <th>Удалёнка</th>
+            <th>Приоритет</th>
+            <th class="sortable is-active" data-sort="createdAt">Создано <span class="sort-mark">↓</span></th>
+          </tr>
+        </thead>
+        <tbody id="vacancyRows"></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <button type="button" id="prevPage">Назад</button>
+      <span id="pageLabel" class="muted"></span>
+      <button type="button" id="nextPage">Дальше</button>
+      <label class="muted" for="pageSize">На странице</label>
+      <select id="pageSize"><option>10</option><option selected>20</option><option>50</option><option>100</option></select>
+    </div>
+    <div id="listError" class="error"></div>
+  </div>
+</main>
+
+<div id="importModal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h2>Импорт CSV</h2>
+    <div id="importSummary" class="muted"></div>
+    <div id="importIssues" class="import-preview"></div>
+    <div class="field">
+      <label for="importMode">Режим</label>
+      <select id="importMode">
+        <option value="CREATE_ONLY">Только новые</option>
+        <option value="UPSERT_BY_CODE">Обновление по code</option>
+      </select>
+    </div>
+    <div class="toolbar">
+      <button type="button" class="primary" id="importApplyBtn">Применить</button>
+      <button type="button" id="importCancelBtn">Отмена</button>
+    </div>
+    <div id="importError" class="error"></div>
+  </div>
+</div>
+
+<script src="/api.js"></script>
+<script src="/app.js"></script>
+<script>
+'use strict';
+
+const state = {
+  page: 0,
+  size: 20,
+  totalPages: 0,
+  totalElements: 0,
+  sortField: 'createdAt',
+  sortDir: 'desc',
+  selected: new Set(),
+  rows: [],
+  importForm: null
+};
+
+async function boot() {
+  const user = await Api.ensureAuth();
+  if (!user) return;
+  App.renderNav('vacancies');
+  await loadEmployers();
+  await loadVacancies();
+}
+
+function filterParams() {
+  const p = new URLSearchParams();
+  const map = {
+    q: 'fQ', employerUuid: 'fEmployer', status: 'fStatus', remote: 'fRemote',
+    priority: 'fPriority', tag: 'fTag', archived: 'fArchived',
+    salaryFrom: 'fSalaryFrom', salaryTo: 'fSalaryTo'
+  };
+  Object.entries(map).forEach(([k, id]) => {
+    const v = document.getElementById(id).value;
+    if (v !== '') p.set(k, v);
+  });
+  p.set('page', String(state.page));
+  p.set('size', String(state.size));
+  p.set('sort', `${state.sortField},${state.sortDir}`);
+  return p;
+}
+
+async function loadEmployers() {
+  const list = await Api.request('GET', '/api/employers?onlyEnabled=false');
+  document.getElementById('fEmployer').innerHTML =
+    '<option value="">Все</option>' + list.map(e => `<option value="${e.uuid}">${App.escapeHtml(e.name)}</option>`).join('');
+}
+
+function updateSelectionUi() {
+  document.getElementById('selectedCount').textContent = `Выбрано: ${state.selected.size}`;
+  const has = state.selected.size > 0;
+  document.getElementById('editSelectedBtn').disabled = state.selected.size !== 1;
+  document.getElementById('archiveSelectedBtn').disabled = !has;
+  document.getElementById('restoreSelectedBtn').disabled = !has;
+  const allOnPage = state.rows.length > 0 && state.rows.every(r => state.selected.has(r.uuid));
+  document.getElementById('selectAll').checked = allOnPage;
+}
+
+async function loadVacancies() {
+  const err = document.getElementById('listError');
+  err.textContent = '';
+  try {
+    const data = await Api.request('GET', `/api/vacancies?${filterParams()}`);
+    state.rows = data.content || [];
+    state.totalPages = data.totalPages;
+    state.totalElements = data.totalElements;
+    document.getElementById('vacancyMeta').textContent =
+      `Показано ${state.rows.length} из ${data.totalElements}`;
+    document.getElementById('pageLabel').textContent =
+      `Стр. ${data.page + 1} / ${Math.max(data.totalPages, 1)}`;
+    document.getElementById('vacancyRows').innerHTML = state.rows.map(v => `
+      <tr class="${state.selected.has(v.uuid) ? 'is-selected' : ''}" data-uuid="${v.uuid}">
+        <td><input type="checkbox" data-id="${v.uuid}" ${state.selected.has(v.uuid) ? 'checked' : ''}/></td>
+        <td><a class="code" href="/vacancy.html?uuid=${encodeURIComponent(v.uuid)}">${App.escapeHtml(v.code)}</a></td>
+        <td><a href="/vacancy.html?uuid=${encodeURIComponent(v.uuid)}">${App.escapeHtml(v.title)}</a></td>
+        <td>${App.escapeHtml(v.employerName)}</td>
+        <td>${App.STATUS_LABEL[v.status] || App.escapeHtml(v.status)}</td>
+        <td class="num mono">${App.moneyRange(v.salaryMin, v.salaryMax)}</td>
+        <td>${[...(v.tags || [])].map(t => `<span class="tag">${App.escapeHtml(t)}</span>`).join('')}</td>
+        <td>${v.remote ? 'Да' : 'Нет'}</td>
+        <td><span class="stamp ${String(v.priority).toLowerCase()}">${App.PRIORITY_LABEL[v.priority] || App.escapeHtml(v.priority)}</span></td>
+        <td class="mono">${App.when(v.createdAt)}</td>
+      </tr>`).join('') || `<tr><td colspan="10" class="muted">Ничего не найдено</td></tr>`;
+
+    document.querySelectorAll('#vacancyRows input[type=checkbox]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) state.selected.add(cb.dataset.id); else state.selected.delete(cb.dataset.id);
+        const tr = cb.closest('tr');
+        if (tr) tr.classList.toggle('is-selected', cb.checked);
+        updateSelectionUi();
+      });
+    });
+    updateSortMarks();
+    updateSelectionUi();
+  } catch (e) {
+    App.handleApiError(e, err);
+  }
+}
+
+function updateSortMarks() {
+  document.querySelectorAll('th.sortable').forEach(th => {
+    const field = th.dataset.sort;
+    const active = field === state.sortField;
+    th.classList.toggle('is-active', active);
+    const mark = th.querySelector('.sort-mark');
+    mark.textContent = active ? (state.sortDir === 'asc' ? '↑' : '↓') : '';
+  });
+}
+
+document.getElementById('searchBtn').addEventListener('click', async () => { state.page = 0; await loadVacancies(); });
+document.getElementById('resetBtn').addEventListener('click', async () => {
+  ['fQ','fEmployer','fStatus','fRemote','fPriority','fTag','fSalaryFrom','fSalaryTo'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fArchived').value = 'false';
+  state.page = 0;
+  await loadVacancies();
+});
+document.getElementById('prevPage').addEventListener('click', async () => {
+  if (state.page > 0) { state.page--; await loadVacancies(); }
+});
+document.getElementById('nextPage').addEventListener('click', async () => {
+  if (state.page + 1 < state.totalPages) { state.page++; await loadVacancies(); }
+});
+document.getElementById('pageSize').addEventListener('change', async (e) => {
+  state.size = Number(e.target.value);
+  state.page = 0;
+  await loadVacancies();
+});
+
+document.querySelectorAll('th.sortable').forEach(th => {
+  th.addEventListener('click', async () => {
+    const field = th.dataset.sort;
+    if (state.sortField === field) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+    else { state.sortField = field; state.sortDir = field === 'title' ? 'asc' : 'desc'; }
+    state.page = 0;
+    await loadVacancies();
+  });
+});
+
+document.getElementById('selectAll').addEventListener('change', (e) => {
+  state.rows.forEach(r => {
+    if (e.target.checked) state.selected.add(r.uuid); else state.selected.delete(r.uuid);
+  });
+  loadVacancies();
+});
+
+document.getElementById('editSelectedBtn').addEventListener('click', () => {
+  const uuid = [...state.selected][0];
+  if (uuid) location.href = `/edit.html?uuid=${encodeURIComponent(uuid)}`;
+});
+
+async function bulk(action, extra = {}) {
+  if (!state.selected.size) return;
+  try {
+    const result = await Api.request('POST', '/api/vacancies/bulk', {
+      action,
+      uuids: [...state.selected],
+      ...extra
+    });
+    const failed = (result.failed || []).length;
+    App.showToast(failed ? `Готово: ${result.processed}, ошибок: ${failed}` : `Обработано: ${result.processed}`);
+    state.selected.clear();
+    await loadVacancies();
+  } catch (e) {
+    App.handleApiError(e, document.getElementById('listError'));
+  }
+}
+
+document.getElementById('bulkArchive').addEventListener('click', () => bulk('ARCHIVE'));
+document.getElementById('bulkRestore').addEventListener('click', () => bulk('RESTORE'));
+document.getElementById('archiveSelectedBtn').addEventListener('click', () => bulk('ARCHIVE'));
+document.getElementById('restoreSelectedBtn').addEventListener('click', () => bulk('RESTORE'));
+document.getElementById('bulkStatusBtn').addEventListener('click', () => {
+  const status = document.getElementById('bulkStatus').value;
+  if (!status) { App.showToast('Выберите статус', 'warn'); return; }
+  bulk('CHANGE_STATUS', { status });
+});
+document.getElementById('bulkAddTag').addEventListener('click', () => {
+  const tag = document.getElementById('bulkTag').value.trim();
+  if (!tag) { App.showToast('Укажите тег', 'warn'); return; }
+  bulk('ADD_TAG', { tag });
+});
+document.getElementById('bulkRemoveTag').addEventListener('click', () => {
+  const tag = document.getElementById('bulkTag').value.trim();
+  if (!tag) { App.showToast('Укажите тег', 'warn'); return; }
+  bulk('REMOVE_TAG', { tag });
+});
+
+document.getElementById('exportBtn').addEventListener('click', async () => {
+  const response = await fetch(`/api/vacancies/export?${filterParams()}`, {
+    headers: { Authorization: `Bearer ${Api.getToken()}` },
+    credentials: 'include'
+  });
+  if (!response.ok) {
+    App.showToast('Не удалось экспортировать', 'warn');
+    return;
+  }
+  const blob = await response.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vacancies.csv';
+  a.click();
+});
+
+document.getElementById('importFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  state.importForm = form;
+  try {
+    const mode = document.getElementById('importMode').value;
+    const preview = await Api.request('POST', `/api/vacancies/import/preview?mode=${mode}`, form);
+    document.getElementById('importSummary').textContent =
+      `Всего строк: ${preview.totalRows}, корректных: ${preview.validRows}, ошибок: ${preview.invalidRows}`;
+    document.getElementById('importIssues').innerHTML = (preview.issues || [])
+      .map(i => `<div>Строка ${i.row}: ${App.escapeHtml(i.message)}</div>`).join('') || '<div class="ok">Ошибок нет</div>';
+    document.getElementById('importModal').classList.remove('hidden');
+  } catch (err) {
+    App.handleApiError(err, document.getElementById('listError'));
+  }
+});
+
+document.getElementById('importCancelBtn').addEventListener('click', () => {
+  document.getElementById('importModal').classList.add('hidden');
+  state.importForm = null;
+});
+
+document.getElementById('importApplyBtn').addEventListener('click', async () => {
+  if (!state.importForm) return;
+  const mode = document.getElementById('importMode').value;
+  try {
+    const result = await Api.request('POST', `/api/vacancies/import/apply?mode=${mode}`, state.importForm);
+    App.showToast(`Применено: ${result.applied}, пропущено: ${result.skipped}`);
+    document.getElementById('importModal').classList.add('hidden');
+    state.importForm = null;
+    await loadVacancies();
+  } catch (err) {
+    App.handleApiError(err, document.getElementById('importError'));
+  }
+});
+
+boot();
+</script>
+</body>
+</html>
