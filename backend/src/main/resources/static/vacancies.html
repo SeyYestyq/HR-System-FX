@@ -275,7 +275,10 @@ document.getElementById('editSelectedBtn').addEventListener('click', () => {
 });
 
 async function bulk(action, extra = {}) {
-  if (!state.selected.size) return;
+  if (!state.selected.size) {
+    App.showToast('Сначала отметьте вакансии галочками в таблице', 'warn');
+    return;
+  }
   try {
     const result = await Api.request('POST', '/api/vacancies/bulk', {
       action,
