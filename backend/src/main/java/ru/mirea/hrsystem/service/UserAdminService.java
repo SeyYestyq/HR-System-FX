@@ -89,6 +89,7 @@ public class UserAdminService {
         passwordPolicy.validate(temporary);
         user.setPasswordHash(passwordEncoder.encode(temporary));
         user.setMustChangePassword(true);
+        user.setEnabled(true);
         sessions.revokeAllForUser(user.getId(), Instant.now());
         audit.record("USER_PASSWORD_RESET", "USER", uuid, "Сброшен пароль пользователя", Map.of());
         return new CreatedUserResponse(toResponse(user), temporary);

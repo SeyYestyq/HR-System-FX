@@ -66,10 +66,13 @@ public class AuthService {
             throw new AuthenticationFailedException("Слишком много попыток входа. Попробуйте позже");
         }
         UserAccount user = users.findByEmailIgnoreCase(email).orElse(null);
-        if (user == null || !user.isEnabled() || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (user == null || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             loginAttempts.loginFailed(email);
             audit.recordAnonymous(email, "LOGIN_FAILED", "Неудачная попытка входа");
             throw new AuthenticationFailedException("Неверный email или пароль");
+        }
+        if (!user.isEnabled()) {
+            throw new AuthenticationFailedException("Учётная запись отключена");
         }
         if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(Instant.now())) {
             throw new AuthenticationFailedException("Учётная запись временно заблокирована");
