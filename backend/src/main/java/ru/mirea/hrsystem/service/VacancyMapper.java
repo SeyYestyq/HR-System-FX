@@ -15,7 +15,6 @@ public class VacancyMapper {
     }
 
     public VacancyResponse toResponse(Vacancy vacancy) {
-        // Копируем теги из PersistentSet, иначе Jackson падает после закрытия сессии (open-in-view: false).
         return new VacancyResponse(
                 vacancy.getUuid(),
                 vacancy.getCode(),

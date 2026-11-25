@@ -27,7 +27,6 @@ public class LoginAttemptService {
         attempts.remove(normalize(email));
     }
 
-    /** Сброс состояния (для тестов). */
     public void clear() {
         attempts.clear();
     }

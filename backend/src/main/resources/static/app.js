@@ -1,6 +1,5 @@
 'use strict';
 
-/** Общие хелперы UI: навигация, роли, форматирование, валидация. */
 const App = (() => {
   const STATUS_LABEL = { DRAFT: 'Черновик', OPEN: 'Открыта', PAUSED: 'Пауза', CLOSED: 'Закрыта' };
   const PRIORITY_LABEL = { HIGH: 'Высокий', MEDIUM: 'Средний', LOW: 'Низкий' };
@@ -87,7 +86,6 @@ const App = (() => {
     applyRoleUi();
   }
 
-  /** Живая валидация поля: подсветка + текст под полем. */
   function bindLiveValidation(input, validateFn) {
     const wrap = input.closest('.field') || input.parentElement;
     let hint = wrap.querySelector('.field-hint');
@@ -124,7 +122,6 @@ const App = (() => {
     return true;
   }
 
-  /** Чипы тегов. */
   function createTagEditor(container, initial) {
     const state = new Set([...(initial || [])].map(t => String(t).trim().toLowerCase()).filter(Boolean));
     const render = () => {

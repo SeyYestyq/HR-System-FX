@@ -45,7 +45,6 @@ public class AnalyticsService {
                 .map(row -> new NamedCount(String.valueOf(row[0]), ((Number) row[1]).longValue()))
                 .toList();
 
-        // priority вычисляется (не колонка БД) — группировка через калькулятор Дамира
         Map<Priority, Long> priorityCounts = new EnumMap<>(Priority.class);
         for (Priority p : Priority.values()) {
             priorityCounts.put(p, 0L);

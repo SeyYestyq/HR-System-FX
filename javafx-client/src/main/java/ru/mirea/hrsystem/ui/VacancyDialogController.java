@@ -185,7 +185,6 @@ public class VacancyDialogController {
 
         updateCharacterCounters();
 
-        // 1. Title validation: mandatory, length between 3 and 100
         String rawTitle = titleField != null && titleField.getText() != null ? titleField.getText() : "";
         String trimmedTitle = rawTitle.trim();
         if (trimmedTitle.isEmpty()) {
@@ -208,7 +207,6 @@ public class VacancyDialogController {
             clearFieldError(titleField, titleErrorLabel);
         }
 
-        // 2. Employer validation: mandatory selection
         if (employerComboBox == null || employerComboBox.getValue() == null) {
             valid = false;
             if (userInteracted) {
@@ -221,7 +219,6 @@ public class VacancyDialogController {
             clearFieldError(employerComboBox, employerErrorLabel);
         }
 
-        // 3. Salary Min validation
         BigDecimal min = null;
         boolean minFormatValid = true;
         if (salaryMinField != null && salaryMinField.getText() != null && !salaryMinField.getText().isBlank()) {
@@ -251,7 +248,6 @@ public class VacancyDialogController {
             clearFieldError(salaryMinField, salaryMinErrorLabel);
         }
 
-        // 4. Salary Max validation
         BigDecimal max = null;
         boolean maxFormatValid = true;
         if (salaryMaxField != null && salaryMaxField.getText() != null && !salaryMaxField.getText().isBlank()) {
@@ -281,7 +277,6 @@ public class VacancyDialogController {
             clearFieldError(salaryMaxField, salaryMaxErrorLabel);
         }
 
-        // 5. Cross-field salary range validation (min <= max)
         if (minFormatValid && maxFormatValid && min != null && max != null) {
             if (min.compareTo(max) > 0) {
                 valid = false;
@@ -292,7 +287,6 @@ public class VacancyDialogController {
             }
         }
 
-        // 6. Description validation
         if (descriptionArea != null && descriptionArea.getText() != null) {
             if (descriptionArea.getText().length() > DESCRIPTION_MAX_LENGTH) {
                 valid = false;
@@ -303,7 +297,6 @@ public class VacancyDialogController {
             }
         }
 
-        // 7. General error banner
         if (errorLabel != null) {
             if (!valid && userInteracted && firstErrorMessage != null) {
                 errorLabel.setText(firstErrorMessage);
@@ -316,7 +309,6 @@ public class VacancyDialogController {
             }
         }
 
-        // 8. Bind dynamic state of OK button
         if (okButton != null) {
             okButton.setDisable(!valid);
         }

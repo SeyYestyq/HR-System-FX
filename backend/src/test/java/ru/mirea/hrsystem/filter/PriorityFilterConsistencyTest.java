@@ -24,10 +24,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Дифференциальный тест: фильтр по priority в Specification
- * должен совпадать с PriorityCalculator на тех же данных.
- */
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional

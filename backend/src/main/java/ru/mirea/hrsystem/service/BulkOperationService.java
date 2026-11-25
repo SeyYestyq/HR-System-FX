@@ -38,8 +38,6 @@ public class BulkOperationService {
         List<UUID> successful = new ArrayList<>();
         List<BulkFailure> failed = new ArrayList<>();
         for (UUID uuid : request.uuids()) {
-            // Не вызываем require()/throw для отсутствующих UUID: иначе вся bulk-транзакция
-            // помечается rollback-only (UnexpectedRollbackException).
             if (vacancyRepository.findByUuid(uuid).isEmpty()) {
                 failed.add(new BulkFailure(uuid, "Вакансия не найдена"));
                 continue;

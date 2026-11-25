@@ -39,10 +39,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * E2E: полный пользовательский сценарий через HTTP API.
- * login → employer → vacancy CRUD → notes → filters → bulk → CSV → analytics → admin.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -173,7 +169,6 @@ class FullUserJourneyE2ETest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Java Backend E2E Updated"));
 
-        // stale version -> 409
         mockMvc.perform(put("/api/vacancies/" + vacancyUuid)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + editorToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -233,7 +228,6 @@ class FullUserJourneyE2ETest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(greaterThanOrEqualTo(1)));
 
-        // page size capped
         mockMvc.perform(get("/api/vacancies")
                         .param("size", "500")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + viewerToken))
@@ -324,7 +318,6 @@ class FullUserJourneyE2ETest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
 
-        // viewer cannot create vacancy
         mockMvc.perform(post("/api/vacancies")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + viewerToken)
                         .contentType(MediaType.APPLICATION_JSON)

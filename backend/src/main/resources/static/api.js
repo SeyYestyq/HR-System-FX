@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * Общий HTTP-клиент для всех страниц веб-интерфейса.
- * Access JWT в localStorage, refresh через cookie, роли из /api/auth/me.
- */
 const Api = (() => {
   const TOKEN_KEY = 'hr_access_token';
   let refreshPromise = null;
@@ -121,7 +117,7 @@ const Api = (() => {
   }
 
   async function logout() {
-    try { await request('POST', '/api/auth/logout', null, { skipRedirect: true }); } catch (_) { /* ignore */ }
+    try { await request('POST', '/api/auth/logout', null, { skipRedirect: true }); } catch (_) {}
     clearSession();
   }
 

@@ -15,7 +15,6 @@ public interface VacancyRepository extends JpaRepository<Vacancy, Long>, JpaSpec
     Optional<Vacancy> findByCodeIgnoreCase(String code);
     boolean existsByCodeIgnoreCase(String code);
 
-    /** Аналитика (блок 9): агрегаты для GET /api/analytics/summary. */
     long countByArchivedAtIsNull();
 
     long countByArchivedAtIsNotNull();

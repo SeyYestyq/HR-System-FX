@@ -12,9 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Property-based: тысячи случайных входов, инварианты приоритета всегда истинны.
- */
 class PriorityCalculatorPropertyTest {
     private final PriorityCalculator calculator = new PriorityCalculator();
     private final Random random = new Random(42);

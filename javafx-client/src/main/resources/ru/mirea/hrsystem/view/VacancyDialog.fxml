@@ -18,7 +18,6 @@
             <ColumnConstraints minWidth="280" prefWidth="300" hgrow="ALWAYS"/>
         </columnConstraints>
 
-        <!-- Название вакансии -->
         <Label text="Название вакансии *:" GridPane.columnIndex="0" GridPane.rowIndex="0" style="-fx-padding: 6 0 0 0;"/>
         <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="0">
             <TextField fx:id="titleField" promptText="Например: Senior Java Developer"/>
@@ -29,32 +28,27 @@
             </HBox>
         </VBox>
 
-        <!-- Работодатель -->
         <Label text="Работодатель *:" GridPane.columnIndex="0" GridPane.rowIndex="1" style="-fx-padding: 6 0 0 0;"/>
         <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="1">
             <ComboBox fx:id="employerComboBox" maxWidth="Infinity" promptText="Выберите компанию..."/>
             <Label fx:id="employerErrorLabel" styleClass="field-error-label" visible="false" managed="false"/>
         </VBox>
 
-        <!-- Зарплата от -->
         <Label text="Зарплата от (₽):" GridPane.columnIndex="0" GridPane.rowIndex="2" style="-fx-padding: 6 0 0 0;"/>
         <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="2">
             <TextField fx:id="salaryMinField" promptText="Например: 150 000"/>
             <Label fx:id="salaryMinErrorLabel" styleClass="field-error-label" visible="false" managed="false"/>
         </VBox>
 
-        <!-- Зарплата до -->
         <Label text="Зарплата до (₽):" GridPane.columnIndex="0" GridPane.rowIndex="3" style="-fx-padding: 6 0 0 0;"/>
         <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="3">
             <TextField fx:id="salaryMaxField" promptText="Например: 250 000"/>
             <Label fx:id="salaryMaxErrorLabel" styleClass="field-error-label" visible="false" managed="false"/>
         </VBox>
 
-        <!-- Статус -->
         <Label text="Статус:" GridPane.columnIndex="0" GridPane.rowIndex="4" style="-fx-padding: 6 0 0 0;"/>
         <ComboBox fx:id="statusComboBox" maxWidth="Infinity" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
 
-        <!-- Описание -->
         <Label text="Описание:" GridPane.columnIndex="0" GridPane.rowIndex="5" style="-fx-padding: 6 0 0 0;"/>
         <VBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="5">
             <TextArea fx:id="descriptionArea" prefRowCount="3" wrapText="true"
@@ -67,7 +61,6 @@
         </VBox>
     </GridPane>
 
-    <!-- Общий баннер ошибок -->
     <Label fx:id="errorLabel" wrapText="true" styleClass="general-error-label" visible="false" managed="false"/>
 </VBox>
 
